@@ -35,6 +35,9 @@ Vector3 Vector3::operator +(const Vector3 &other) const
     Vector3 returnVal;
 
     // TODO: add other values to current
+    returnVal.x = x + other.x;
+    returnVal.y = y + other.y;
+    returnVal.z = z + other.z;
 
     return returnVal;
     } // Vector3::operator +()
@@ -45,6 +48,9 @@ Vector3 Vector3::operator -(const Vector3 &other) const
     Vector3 returnVal;
 
     // TODO: subract other values from current
+    returnVal.x = x - other.x;
+    returnVal.y = y - other.y;
+    returnVal.z = z - other.z;
 
     return returnVal;
     } // Vector3::operator -()
@@ -55,6 +61,9 @@ Vector3 Vector3::operator *(float factor) const
     Vector3 returnVal;
 
     // TODO: multiply by the given factor
+    returnVal.x = x * factor;
+    returnVal.y = y * factor;
+    returnVal.z = z * factor;
 
     return returnVal;
     } // Vector3::operator *()
@@ -65,6 +74,9 @@ Vector3 Vector3::operator /(float factor) const
     Vector3 returnVal;
 
     // TODO: compute divide by the given factor
+    returnVal.x = x / factor;
+    returnVal.y = y / factor;
+    returnVal.z = z / factor;
 
     return returnVal;
     } // Vector3::operator /()
@@ -73,9 +85,10 @@ Vector3 Vector3::operator /(float factor) const
 float Vector3::dot(const Vector3 &other) const
     { // Vector3::dot()
 
-    // TODO: compute the cross product
+    // TODO: compute the dot product
+    float result = x*other.x + y*other.y + z*other.z;
 
-    return 1.0f;
+    return result;
     } // Vector3::dot()
 
 // cross product routine
@@ -84,6 +97,9 @@ Vector3 Vector3::cross(const Vector3 &other) const
     Vector3 returnVal;
 
     // TODO: compute the cross product
+    returnVal.x = y*other.z - z*other.y;
+    returnVal.y = z*other.x - x*other.z;
+    returnVal.z = x*other.y - y*other.x;
 
     return returnVal;
     } // Vector3::cross()
@@ -93,8 +109,9 @@ float Vector3::length() const
     { // Vector3::length()
 
     // TODO: compute the Euclidean norm
+    float result = std::sqrt(x*x + y*y + z*z);
 
-    return 1.f;
+    return result;
     } // Vector3::length()
 
 // normalisation routine
@@ -103,6 +120,10 @@ Vector3 Vector3::unit() const
     Vector3 returnVal;
 
     // TODO: divide each element by the Euclidean norm
+    float norm = length();
+    returnVal.x = x / norm;
+    returnVal.y = x / norm;
+    returnVal.z = z / norm;
 
     return returnVal;
     } // Vector3::unit()
@@ -151,6 +172,9 @@ Point3 operator +(const Point3 &left, const Vector3 &right)
     Point3 returnVal;
 
     // TODO: add a vector to a point
+    returnVal.x = left.x + right.x;
+    returnVal.y = left.y + right.y;
+    returnVal.z = left.z + right.z;
 
     return returnVal;
     } // operator +()
@@ -161,6 +185,9 @@ Vector3 operator -(const Point3 &left, const Point3 &right)
     Vector3 returnVal;
 
     // TODO: subtract two points to get a difference vector between them
+    returnVal.x = left.x - right.x;
+    returnVal.y = left.y - right.y;
+    returnVal.z = left.z - right.z;
 
     return returnVal;
     } // operator -()
@@ -171,6 +198,9 @@ Vector3 operator *(float factor, const Vector3 &right)
     Vector3 returnVal;
 
     // TODO: scalar multiplication
+    returnVal.x = right.x * factor;
+    returnVal.y = right.y * factor;
+    returnVal.z = right.z * factor;
 
     return returnVal;
     } // operator *
