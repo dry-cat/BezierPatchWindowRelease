@@ -20,6 +20,14 @@ Matrix4::Matrix4()
             coordinates[row][col] = 0.0;
     } // default constructor
 
+// constructor- initialize the matrix with a 2D array of values
+Matrix4::Matrix4(const std::array<std::array<float, 4>, 4> &m)
+    {
+    for (int row = 0; row < 4; row++)
+        for (int col = 0; col < 4; col++)
+            coordinates[row][col] = m[row][col];
+    }
+
 Matrix4::Matrix4(const Matrix4 &other)
     { // copy constructor
     for (int row = 0; row < 4; row++)
@@ -46,7 +54,10 @@ Matrix4 Matrix4::operator *(float factor) const
     // start with a zero matrix
     Matrix4 returnMatrix;
 
-    // TODO: multiply by the factor
+    // multiply by the factor
+    for (int row = 0; row < 4; row++)
+        for (int col = 0; col < 4; col++)
+            returnMatrix[row][col] = coordinates[row][col] * factor;
 
     // and return it
     return returnMatrix;
@@ -59,14 +70,17 @@ Homogeneous4 Matrix4::operator *(const Homogeneous4 &vector) const
     // get a zero-initialised vector
     Homogeneous4 productVector;
 
-    // TODO: loop adding products
+    // loop adding products
+    for (int row = 0; row < 4; row++)
+        for (int k = 0; k < 4; k++)
+            productVector[row] += coordinates[row][k] * vector[k];
 
     // return the result
     return productVector;
     } // operator *()
 
 // and on Cartesian coordinates
-Point3 Matrix4::operator *(const Vector3 &vector) const
+Point3 Matrix4::operator *(const Point3 &vector) const
     { // cartesian multiplication
     // convert to Homogeneous coords and multiply
     Homogeneous4 productVector = (*this) * Homogeneous4(vector);
@@ -75,6 +89,16 @@ Point3 Matrix4::operator *(const Vector3 &vector) const
     return productVector.Point();
     } // cartesian multiplication
 
+// and on vectors
+Vector3 Matrix4::operator *(const Vector3 &vector) const
+    { // matrix-vector multiplication
+    // convert to Homogeneous coords and multiply
+    Homogeneous4 productVector = (*this) * Homogeneous4(vector);
+
+    // drop w (assumed to be 0)
+    return productVector.Vector();
+    } // matrix-vector multiplication
+
 // matrix operations
 // addition operator
 Matrix4 Matrix4::operator +(const Matrix4 &other) const
@@ -82,7 +106,10 @@ Matrix4 Matrix4::operator +(const Matrix4 &other) const
     // start with a zero matrix
     Matrix4 sumMatrix;
 
-    // TODO: loop adding products
+    // loop adding products
+    for (int row = 0; row < 4; row++)
+        for (int col = 0; col < 4; col++)
+            sumMatrix[row][col] = coordinates[row][col] + other[row][col];
 
     // return the result
     return sumMatrix;
@@ -94,7 +121,10 @@ Matrix4 Matrix4::operator -(const Matrix4 &other) const
     // start with a zero matrix
     Matrix4 differenceMatrix;
 
-    // TODO: loop adding products
+    // loop subtracting products
+    for (int row = 0; row < 4; row++)
+        for (int col = 0; col < 4; col++)
+            differenceMatrix[row][col] = coordinates[row][col] - other[row][col];
 
     // return the result
     return differenceMatrix;
@@ -123,7 +153,10 @@ Matrix4 Matrix4::transpose() const
     // start with a zero matrix
     Matrix4 transposeMatrix;
 
-    // TODO: switch rows with columns
+    // switch rows with columns
+    for (int row = 0; row < 4; row++)
+        for (int col = 0; col < 4; col++)
+            transposeMatrix[row][col] = coordinates[col][row];
 
     // return the result
     return transposeMatrix;
@@ -135,7 +168,9 @@ void Matrix4::SetTranslation(const Vector3 &vector)
     // start with an identity matrix
     SetIdentity();
 
-    // TODO: put the translation in the w column
+    // put the translation in the w column
+    for (int row = 0; row < 4; row++)
+        coordinates[row][3] = vector[row];
 
     } // SetTranslation()
 
@@ -144,7 +179,10 @@ void Matrix4::SetScale(float xScale, float yScale, float zScale)
         // start off with a zero matrix
         SetZero();
 
-        // TODO: set the scale factors
+        // set the scale factors
+        coordinates[0][0] = xScale;
+        coordinates[1][1] = yScale;
+        coordinates[2][2] = zScale;
 
     } // SetScale()
 

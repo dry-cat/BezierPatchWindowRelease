@@ -18,6 +18,7 @@
 #ifndef MATRIX4_H
 #define MATRIX4_H
 
+#include <array>
 #include <iostream>
 #include "Vector3.h"
 #include "Homogeneous4.h"
@@ -44,6 +45,8 @@ class Matrix4
 
     // constructor - default to the zero matrix
     Matrix4();
+    // constructor - initialize the matrix with values
+    Matrix4(const std::array<std::array<float, 4>, 4> &m);
     // copy constructor
     Matrix4(const Matrix4 &other);
     
@@ -66,7 +69,9 @@ class Matrix4
     Homogeneous4 operator *(const Homogeneous4 &vector) const;
 
     // and on Cartesian coordinates
-    Point3 operator *(const Vector3 &vector) const;
+    Point3 operator *(const Point3 &vector) const;
+    // and on vectors
+    Vector3 operator *(const Vector3 &vector) const;
 
     // matrix operations
     // addition operator

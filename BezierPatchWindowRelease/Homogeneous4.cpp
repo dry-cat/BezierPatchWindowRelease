@@ -5,6 +5,7 @@
 //  User Interface for Coursework
 ////////////////////////////////////////////////////////////////////////
 
+#include <assert.h>
 
 #include "Homogeneous4.h"
 #include "math.h"
@@ -56,7 +57,10 @@ Point3 Homogeneous4::Point() const
     { // Homogeneous4::Point()
     Point3 returnVal;
 
-    // TODO: convert from Homogeneous coordinates to a Point
+    // convert from Homogeneous coordinates to a Point
+    returnVal.x = x / w;
+    returnVal.y = y / w;
+    returnVal.z = z / w;
 
     return returnVal;
     } // Homogeneous4::Point()
@@ -66,7 +70,10 @@ Vector3 Homogeneous4::Vector() const
     { // Homogeneous4::Vector()
     Vector3 returnVal;
 
-    // TODO: convert from Homogeneous coordinates to a Vector
+    // convert from Homogeneous coordinates to a Vector
+    returnVal.x = x;
+    returnVal.y = y;
+    returnVal.z = z;
 
     return returnVal;
     } // Homogeneous4::Vector()
@@ -78,6 +85,15 @@ Homogeneous4 Homogeneous4::operator +(const Homogeneous4 &other) const
     Homogeneous4 returnVal;
 
     // TODO: add
+    // make sure that we are only doing vector + point or vector + vector
+    // TODO: check this assumption
+    assert(w == 0);
+    float nonzeroScale = std::max(1.0f, other.w);
+    returnVal.x = x*nonzeroScale + other.x;
+    returnVal.y = y*nonzeroScale + other.y;
+    returnVal.z = z*nonzeroScale + other.z;
+    // either 0 if other is a vector or w if other is a point
+    returnVal.w = other.w;
 
     return returnVal;
     } // Homogeneous4::operator +()
@@ -88,6 +104,15 @@ Homogeneous4 Homogeneous4::operator -(const Homogeneous4 &other) const
     Homogeneous4 returnVal;
 
     // TODO: subtract
+    // make sure that we are only doing vector - point or vector - vector
+    // TODO: check this assumption
+    assert(w == 0);
+    float nonzeroScale = std::max(1.0f, other.w);
+    returnVal.x = x*nonzeroScale - other.x;
+    returnVal.y = y*nonzeroScale - other.y;
+    returnVal.z = z*nonzeroScale - other.z;
+    // either 0 if other is a vector or w if other is a point
+    returnVal.w = other.w;
 
     return returnVal;
     } // Homogeneous4::operator -()
@@ -98,6 +123,10 @@ Homogeneous4 Homogeneous4::operator *(float factor) const
     Homogeneous4 returnVal;
 
     // TODO: scalar multiplication
+    returnVal.x = x * factor;
+    returnVal.y = y * factor;
+    returnVal.z = z * factor;
+    returnVal.w = w;
 
     return returnVal;
     } // Homogeneous4::operator *()
@@ -108,6 +137,10 @@ Homogeneous4 Homogeneous4::operator /(float factor) const
     Homogeneous4 returnVal;
 
     // TODO: scalar division
+    returnVal.x = x / factor;
+    returnVal.y = y / factor;
+    returnVal.z = z / factor;
+    returnVal.w = w;
 
     return returnVal;
     } // Homogeneous4::operator /()
