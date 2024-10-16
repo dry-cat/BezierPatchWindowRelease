@@ -80,6 +80,21 @@ void BezierPatchRenderWidget::resizeGL(int w, int h)
     } // BezierPatchRenderWidget::resizeGL()
 
 
+
+void BezierPatchRenderWidget::DrawLine(const Homogeneous4 &A, const Homogeneous4 &B, const RGBAValue &color) {
+    for (float alpha = 0.0f; alpha <= 1.0f; alpha += 0.001f) {
+        float beta = 1.0f - alpha;
+
+        Point3 P = (alpha*A + beta*B).Point();
+
+        auto y = static_cast<int>(std::round(P.y));
+        auto x = static_cast<int>(std::round(P.x));
+        frameBuffer[y][x] = color;
+    }
+}
+
+
+
 // called every time the widget needs painting
 void BezierPatchRenderWidget::paintGL()
 { // BezierPatchRenderWidget::paintGL()
@@ -112,6 +127,16 @@ void BezierPatchRenderWidget::paintGL()
             // draw each vertex as a point
             // (paint the active vertex in red, ...
             //  ... keep the others in white)
+            RGBAValue color{};
+            if (i == renderParameters->activeVertex) {
+                color = RGBAValue{255.0f, 0.0f, 0.0f, 1.0f};
+            } else {
+                float intensity = 0.75f * 255.0f;
+                color = RGBAValue{intensity, intensity, intensity, 255.0f};
+            }
+
+            // auto vertex = (*patchControlPoints).vertices[(i/4)*4+(i%4)];
+            // std::cout << "vertex: " << vertex << '\n';
 
             // consider ways to make the rendered points bigger than just 1x1 pixel on the screen
         }
@@ -122,11 +147,29 @@ void BezierPatchRenderWidget::paintGL()
 
         // Planes are axis aligned grids made up of lines
 
-        // Draw the vertical x axis plane (in purple)
+        Point3 midscreen{std::floor(static_cast<float>(frameBuffer.width) / 2.0f),
+            std::floor(static_cast<float>(frameBuffer.height) / 2.0f),
+            0.0f};
+
+        Point3 midTopScreen{std::floor(static_cast<float>(frameBuffer.width) / 2.0f),
+            std::floor(static_cast<float>(frameBuffer.height)),
+            0.0f};
+
+        Point3 midRightScreen{std::floor(static_cast<float>(frameBuffer.width)),
+            std::floor(static_cast<float>(frameBuffer.height) / 2.0f),
+            0.0f};
+
+        float quarterIntensity = 0.25f * 255.0f;
+        // Draw the horizontal x axis plane (in purple)
+        RGBAValue purple = {quarterIntensity, 0.0f, quarterIntensity, 255.0f};
+        DrawLine(Homogeneous4(midscreen), Homogeneous4(midRightScreen), purple);
 
         // Draw the vertical y axis plane (in blue)
+        RGBAValue blue = {0.0f, quarterIntensity, quarterIntensity, 255.0f};
+        DrawLine(Homogeneous4(midscreen), Homogeneous4(midTopScreen), blue);
 
         // Draw the flat plane (in brown)
+        RGBAValue yellow = {quarterIntensity, quarterIntensity, 0.0f, 255.0f};
 
         // Refer to RenderWidget.cpp for the precise colours.
 
