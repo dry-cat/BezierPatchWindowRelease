@@ -122,7 +122,7 @@ Vector3 Vector3::unit() const
     // divide each element by the Euclidean norm
     float norm = length();
     returnVal.x = x / norm;
-    returnVal.y = x / norm;
+    returnVal.y = y / norm;
     returnVal.z = z / norm;
 
     return returnVal;
