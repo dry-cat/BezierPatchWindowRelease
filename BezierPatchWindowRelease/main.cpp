@@ -94,6 +94,28 @@ int main(int argc, char **argv)
     std::cout << "b2 = " << b2 << '\n';
     std::cout << "b3 = " << b3 << '\n';
 
+    // homogeneous coordinate tests
+    auto h1Point = Homogeneous4(2.0f, 3.0f, 5.0f, 2.0f);
+    auto h2Point = Homogeneous4(3.0f, 6.0f, 1.0f, 3.0f);
+    auto h3Vector = Homogeneous4(1.0f, 4.0f, 2.0f, 0.0f);
+    auto h4Vector = Homogeneous4(3.0f, 2.0f, 1.0f, 0.0f);
+    auto multFactor{5.0f};
+    auto divFactor{3.0f};
+
+    std::cout << '\n';
+    std::cout << "h1Point + h2Point = " << h1Point + h2Point << '\n';
+    std::cout << "h1Point - h2Point = " << h1Point - h2Point << '\n';
+    std::cout << "h1Point + h3Vector = " << h1Point + h3Vector << '\n';
+    std::cout << "h2Point - h4Vector = " << h2Point - h4Vector << '\n';
+    std::cout << "h3Vector + h4Vector = " << h3Vector + h4Vector << '\n';
+    std::cout << "h4Vector - h3Vector = " << h4Vector - h3Vector << '\n';
+    std::cout << "h1Point * multFactor = " << h1Point * multFactor << '\n';
+    std::cout << "h2Point / divFactor = " << h2Point / divFactor << '\n';
+    // std::cout << "h3Vector + h1Point = " << h3Vector + h1Point << '\n';
+    // std::cout << "h4Vector - h2Point = " << h4Vector - h1Point << '\n';
+
+    std::exit(EXIT_SUCCESS);
+
     // initialize QT
     QApplication renderApp(argc, argv);
 
