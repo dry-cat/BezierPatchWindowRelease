@@ -83,7 +83,7 @@ class RenderParameters
         bezierEnabled(false),
         orthoProjection(true),
         triggerResize(false),
-        theClearColor{0.8f, 0.8f, 0.6f, 1.0f},
+        theClearColor{0.0f, 0.0f, 0.0f, 255.0f},
         windowSize(640),
         activeVertex(0),
         patchControlPoints(newPatchControlPoints)
