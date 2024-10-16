@@ -114,7 +114,8 @@ int main(int argc, char **argv)
     // std::cout << "h3Vector + h1Point = " << h3Vector + h1Point << '\n';
     // std::cout << "h4Vector - h2Point = " << h4Vector - h1Point << '\n';
 
-    std::exit(EXIT_SUCCESS);
+    // std::cout << "Early exit after tests" << '\n';
+    // std::exit(EXIT_SUCCESS);
 
     // initialize QT
     QApplication renderApp(argc, argv);
