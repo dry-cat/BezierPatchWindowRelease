@@ -35,8 +35,10 @@ class RGBAValue
     // values outside 0.0-255.0 are clamped
     RGBAValue(float Red, float Green, float Blue, float Alpha);
 
+#if DRYCAT // TODO:
     // copy constructor
     RGBAValue(const RGBAValue &other);
+#endif // TODO:
     
     // colour modulation routine:
     // NB: this routine scales each component by 1/255.0, multiplies then inverts

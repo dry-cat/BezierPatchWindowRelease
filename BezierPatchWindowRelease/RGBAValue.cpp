@@ -58,6 +58,7 @@ RGBAValue::RGBAValue(float Red, float Green, float Blue, float Alpha)
     alpha = static_cast<unsigned char>(Alpha);
     } // constructor
 
+#if DRYCAT // TODO: this is unnecessary - use default copy constructor
 // copy constructor
 RGBAValue::RGBAValue(const RGBAValue &other)
     :
@@ -67,6 +68,7 @@ RGBAValue::RGBAValue(const RGBAValue &other)
     alpha(other.alpha)
     { // copy constructor
     } // copy constructor
+#endif // TODO:
 
 // convenience routines for scalar multiplication and addition
 RGBAValue operator *(float scalar, const RGBAValue &colour)
