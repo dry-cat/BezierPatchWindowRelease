@@ -67,24 +67,32 @@ int main(int argc, char **argv)
     std::cout << "m3:\n" << m3 << '\n';
 
     auto result1 = p + u;
-    std::cout << "p + v: " << result1 << '\n';
+    std::cout << "p + v = " << result1 << '\n';
 
     auto result2 = q + m1*v;
-    std::cout << "q + m1*v: " << result2 << '\n';
+    std::cout << "q + m1*v = " << result2 << '\n';
 
     auto result3 = r + m3*m2*w;
-    std::cout << "r + m3*m2*w: " << result3 << '\n';
+    std::cout << "r + m3*m2*w = " << result3 << '\n';
 
     auto result4 = m2.transpose();
-    std::cout << "m2.transpose():\n" << result4 << '\n';
+    std::cout << "m2^-1 = m2.transpose() =\n" << result4 << '\n';
 
     auto result5 = u.dot(v);
-    std::cout << "u1.dot(u2): " << result5 << '\n';
+    std::cout << "u1.dot(u2) = " << result5 << '\n';
 
     auto result6 = v.cross(w);
-    std::cout << "v.cross(w): " << result6 << '\n';
+    std::cout << "v.cross(w) = " << result6 << '\n';
 
-    // TODO: construct orthornormal basis
+    std::cout << '\n';
+
+    // construct orthornormal basis
+    auto b1 = u.unit();
+    auto b3 = b1.cross(v).unit();
+    auto b2 = b3.cross(b1);
+    std::cout << "b1 = " << b1 << '\n';
+    std::cout << "b2 = " << b2 << '\n';
+    std::cout << "b3 = " << b3 << '\n';
 
     // // initialize QT
     // QApplication renderApp(argc, argv);
