@@ -84,16 +84,30 @@ Homogeneous4 Homogeneous4::operator +(const Homogeneous4 &other) const
     { // Homogeneous4::operator +()
     Homogeneous4 returnVal;
 
-    // TODO: add
-    // make sure that we are only doing vector + point or vector + vector
-    // TODO: check this assumption
-    assert(w == 0);
-    float nonzeroScale = std::max(1.0f, other.w);
-    returnVal.x = x*nonzeroScale + other.x;
-    returnVal.y = y*nonzeroScale + other.y;
-    returnVal.z = z*nonzeroScale + other.z;
-    // either 0 if other is a vector or w if other is a point
-    returnVal.w = other.w;
+    // add
+    // point + point = point
+    if (w && other.w) {
+        // allow point + point for linear combinations
+        returnVal.x = x*other.w + other.x*w;
+        returnVal.y = y*other.w + other.y*w;
+        returnVal.z = z*other.w + other.z*w;
+        returnVal.w = w * other.w;
+    // point + vector = point
+    } else if (w && !other.w) {
+        returnVal.x = x + other.x*w;
+        returnVal.y = y + other.y*w;
+        returnVal.z = z + other.z*w;
+        returnVal.w = w;
+    // vector + vector = vector
+    } else if (!w && !other.w) {
+        returnVal.x = x + other.x;
+        returnVal.y = y + other.y;
+        returnVal.z = z + other.z;
+    // do not allow vector + point
+    } else {
+        std::cerr << "Error adding: vector + point in Homogeneous4::operator+.";
+        std::exit(EXIT_FAILURE);
+    }
 
     return returnVal;
     } // Homogeneous4::operator +()
@@ -103,16 +117,29 @@ Homogeneous4 Homogeneous4::operator -(const Homogeneous4 &other) const
     { // Homogeneous4::operator -()
     Homogeneous4 returnVal;
 
-    // TODO: subtract
-    // make sure that we are only doing vector - point or vector - vector
-    // TODO: check this assumption
-    assert(w == 0);
-    float nonzeroScale = std::max(1.0f, other.w);
-    returnVal.x = x*nonzeroScale - other.x;
-    returnVal.y = y*nonzeroScale - other.y;
-    returnVal.z = z*nonzeroScale - other.z;
-    // either 0 if other is a vector or w if other is a point
-    returnVal.w = other.w;
+    // subtract
+    // point - point = vector
+    if (w && other.w) {
+        returnVal.x = x/w - other.x/other.w;
+        returnVal.y = y/w - other.y/other.w;
+        returnVal.z = z/w - other.z/other.w;
+        returnVal.w = 0;
+    // point - vector = point
+    } else if (w && !other.w) {
+        returnVal.x = x - other.x*w;
+        returnVal.y = y - other.y*w;
+        returnVal.z = z - other.z*w;
+        returnVal.w = w;
+    // vector - vector = vector
+    } else if (!w && !other.w) {
+        returnVal.x = x - other.x;
+        returnVal.y = y - other.y;
+        returnVal.z = z - other.z;
+    // vector + point
+    } else {
+        std::cerr << "Error subtracting: vector - point in Homogeneous4::operator-.";
+        std::exit(EXIT_FAILURE);
+    }
 
     return returnVal;
     } // Homogeneous4::operator -()
@@ -122,7 +149,7 @@ Homogeneous4 Homogeneous4::operator *(float factor) const
     { // Homogeneous4::operator *()
     Homogeneous4 returnVal;
 
-    // TODO: scalar multiplication
+    // scalar multiplication
     returnVal.x = x * factor;
     returnVal.y = y * factor;
     returnVal.z = z * factor;
@@ -136,7 +163,7 @@ Homogeneous4 Homogeneous4::operator /(float factor) const
     { // Homogeneous4::operator /()
     Homogeneous4 returnVal;
 
-    // TODO: scalar division
+    // scalar division
     returnVal.x = x / factor;
     returnVal.y = y / factor;
     returnVal.z = z / factor;
