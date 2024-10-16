@@ -153,6 +153,9 @@ Homogeneous4 Homogeneous4::operator *(float factor) const
     returnVal.x = x * factor;
     returnVal.y = y * factor;
     returnVal.z = z * factor;
+    // TODO: check if this is what we want
+    // for linear combinations this makes sense but maybe for other things it
+    // doesn't
     returnVal.w = w;
 
     return returnVal;
@@ -167,6 +170,9 @@ Homogeneous4 Homogeneous4::operator /(float factor) const
     returnVal.x = x / factor;
     returnVal.y = y / factor;
     returnVal.z = z / factor;
+    // TODO: check if this is what we want
+    // for linear combinations this makes sense but maybe for other things it
+    // doesn't
     returnVal.w = w;
 
     return returnVal;
