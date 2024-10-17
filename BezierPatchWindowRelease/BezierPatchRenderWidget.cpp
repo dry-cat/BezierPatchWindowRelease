@@ -85,6 +85,12 @@ void BezierPatchRenderWidget::SetPixel(Homogeneous4 coords, const RGBAValue &col
         // std::cout << "coords start: " << coords << '\n';
 
         // std::cout << "modelviewMatrix: " << renderParameters->modelviewMatrix;
+        renderParameters->modelviewMatrix.SetIdentity();
+
+        renderParameters->modelviewMatrix = renderParameters->rotationMatrix * renderParameters->modelviewMatrix;
+        renderParameters->modelviewMatrix[0][3] = renderParameters->xTranslate;
+        renderParameters->modelviewMatrix[1][3] = renderParameters->yTranslate;
+        renderParameters->modelviewMatrix[2][3] = renderParameters->zTranslate;
 
         // convert from model space to view space
         coords = renderParameters->modelviewMatrix * coords;
@@ -97,37 +103,27 @@ void BezierPatchRenderWidget::SetPixel(Homogeneous4 coords, const RGBAValue &col
         float aspectRatio = static_cast<float>(renderParameters->windowWidth) /
                                 static_cast<float>(renderParameters->windowHeight);
 
-        // std::cout << "aspectRatio: " << aspectRatio << '\n';
-
-        // TODO: Solve wrap around bug
         // TODO: Solve segfault bug
 
         // TODO: store this properly and only change it on renderParameters->triggerResize
         // TODO: explain
-        auto SetProjMatrix = [&](float l, float r, float b, float t, float n, float f){
-                projMatrix[0][0] = 2.0f / (r - l);
-                projMatrix[1][1] = 2.0f / (t - b);
+        auto SetProjMatrix = [&](float r, float t, float n, float f){
+                projMatrix[0][0] = 1.0f / r;
+                projMatrix[1][1] = 1.0f / t;
                 projMatrix[2][2] = -2.0f / (f - n);
-                projMatrix[0][3] = -(r+l)/(r-l);
-                projMatrix[1][3] = -(t+b)/(t-b);
-                projMatrix[2][3] = -(f+n)/(f-n);
+                projMatrix[2][3] = -(f + n)/(f - n);
         };
 
+        float n = 0.01f;
+        float f = 200.0f;
+        float scale = 10.0f / renderParameters->zTranslate;
+        float adjustedScale = aspectRatio * 10.0f / renderParameters->zTranslate;
         if (renderParameters->orthoProjection) {
-            if (aspectRatio > 1.0) {
-                SetProjMatrix(-aspectRatio * 10.0f / renderParameters->zTranslate,
-                    aspectRatio * 10.0f / renderParameters->zTranslate,
-                        -10.0f / renderParameters->zTranslate,
-                        -10.0f / renderParameters->zTranslate,
-                        0.01f, 200.0f);
+            if (aspectRatio > 1.0f) {
+                SetProjMatrix(adjustedScale, scale, n, f);
             } else {
-                SetProjMatrix(-10.0f / renderParameters->zTranslate,
-                    10.0f / renderParameters->zTranslate,
-                    -aspectRatio * 10.0f / renderParameters->zTranslate,
-                    aspectRatio * 10.0f / renderParameters->zTranslate,
-                    0.01f, 200.0f);
+                SetProjMatrix(scale, adjustedScale, n, f);
             }
-            // std::cout << "zTranslate: " << renderParameters->zTranslate << '\n';
         } else {
             std::cerr << "Error perspective projection not implemented yet.";
             std::exit(EXIT_FAILURE);
@@ -153,17 +149,20 @@ void BezierPatchRenderWidget::SetPixel(Homogeneous4 coords, const RGBAValue &col
         P.y = height / 2.0f * P.y + (P.y + height / 2.0f);
         P.z = (far - near) / 2.0f * P.z + (far + near) / 2.0f;
 
-        auto y = static_cast<int>(std::round(P.y));
-        auto x = static_cast<int>(std::round(P.x));
+        auto y = static_cast<long>(std::round(P.y));
+        auto x = static_cast<long>(std::round(P.x));
 
-        if (y >= frameBuffer.height || x >= frameBuffer.width) {
-            std::cout << "x: " << x << " y: " << y << '\n';
-            std::cout << "P: " << P << '\n';
-        }
+        // if ((std::abs(height - y) > 2.0f) ||
+        //     (std::abs(width - x) > 2.0f)) {
+        //     std::cout << "width: " << width << " height: " << height << '\n';
+        //     std::cout << "x: " << x << " y: " << y << '\n';
+        //     std::cout << "P: " << P << '\n';
+        // }
 
-        frameBuffer[frameBuffer.height][frameBuffer.width] = color;
+        y = std::min(y, frameBuffer.height);
+        x = std::min(x, frameBuffer.width);
 
-        // frameBuffer[y][x] = color;
+        frameBuffer[y][x] = color;
 }
 
 void BezierPatchRenderWidget::DrawLine(const Homogeneous4 &A, const Homogeneous4 &B, const RGBAValue &color) {
@@ -203,14 +202,9 @@ void BezierPatchRenderWidget::paintGL()
     Matrix4 identity_matrix;
     identity_matrix.SetIdentity();
 
-    renderParameters->modelviewMatrix.SetTranslation(
-        Vector3(renderParameters->xTranslate,
-                renderParameters->yTranslate,
-                renderParameters->zTranslate));
-
     if(renderParameters->verticesEnabled)
     {// UI control for showing vertices
-        for(int i = 0 ; i < static_cast<int>((*patchControlPoints).vertices.size()); i++)
+        for(int i = 0 ; i < static_cast<int>(patchControlPoints->vertices.size()); i++)
         {
             // draw each vertex as a point
             // (paint the active vertex in red, ...
@@ -235,23 +229,43 @@ void BezierPatchRenderWidget::paintGL()
 
         // Planes are axis aligned grids made up of lines
 
-        Point3 midscreen{0.0f, 0.0f, 0.0f};
-
-        Point3 midTopScreen{0.0f, 5.0f, 0.0f};
-
-        Point3 midRightScreen{5.0f, 0.0f, 0.0f};
-
         float quarterIntensity = 0.25f * 255.0f;
+
         // Draw the horizontal x axis plane (in purple)
-        RGBAValue purple = {quarterIntensity, 0.0f, quarterIntensity, 255.0f};
-        DrawLine(Homogeneous4(midscreen), Homogeneous4(midRightScreen), purple);
+        for (int i = -5; i <= 5; i+=2)
+        {
+            RGBAValue purple = {quarterIntensity, 0.0f, quarterIntensity, 255.0f};
+            auto startA = Homogeneous4(i, 0, -5, 1);
+            auto endA = Homogeneous4(i, 0, 5, 1);
+            DrawLine(startA, endA, purple);
+            auto startB = Homogeneous4(-5, 0, i, 1);
+            auto endB = Homogeneous4(5, 0, i, 1);
+            DrawLine(startB, endB, purple);
+        }
 
         // Draw the vertical y axis plane (in blue)
-        RGBAValue blue = {0.0f, quarterIntensity, quarterIntensity, 255.0f};
-        DrawLine(Homogeneous4(midscreen), Homogeneous4(midTopScreen), blue);
+        for (int i = -5; i <= 5; i+=2)
+        {
+            RGBAValue blue = {0.0f, quarterIntensity, quarterIntensity, 255.0f};
+            auto startA = Homogeneous4(0, i, -5, 1);
+            auto endA = Homogeneous4(0, i, 5, 1);
+            DrawLine(startA, endA, blue);
+            auto startB = Homogeneous4(0, -5, i, 1);
+            auto endB = Homogeneous4(0, 5, i, 1);
+            DrawLine(startB, endB, blue);
+        }
 
         // Draw the flat plane (in brown)
-        // RGBAValue yellow = {quarterIntensity, quarterIntensity, 0.0f, 255.0f};
+        for (int i = -5; i <= 5; i++)
+        {
+            RGBAValue yellow = {quarterIntensity, quarterIntensity, 0.0f, 255.0f};
+            auto startA = Homogeneous4(-5, i, 0, 1);
+            auto endA = Homogeneous4(5, i, 0, 1);
+            DrawLine(startA, endA, yellow);
+            auto startB = Homogeneous4(i, -5, 0, 1);
+            auto endB = Homogeneous4(i, 5, 0, 1);
+            DrawLine(startB, endB, yellow);
+        }
 
         // Refer to RenderWidget.cpp for the precise colours.
 
