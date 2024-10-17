@@ -143,6 +143,8 @@ float &Vector3::operator [] (const int index)
             return z;
         // actually the error case
         default:
+            std::cerr << "Index error on Vector3::operator[].";
+            std::exit(EXIT_FAILURE);
             return x;       
         } // switch on index
     } // operator []
@@ -162,6 +164,8 @@ const float &Vector3::operator [] (const int index) const
             return z;
         // actually the error case
         default:
+            std::cerr << "Index error on Vector3::operator[].";
+            std::exit(EXIT_FAILURE);
             return x;       
         } // switch on index
     } // operator []
