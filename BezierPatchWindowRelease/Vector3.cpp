@@ -19,9 +19,9 @@ Vector3::Vector3(float X, float Y, float Z)
     : x(X), y(Y), z(Z) 
     {}
 
-Vector3::Vector3(const Vector3 &other)
-    : x(other.x), y(other.y), z(other.z) 
-    {}
+// Vector3::Vector3(const Vector3 &other)
+//     : x(other.x), y(other.y), z(other.z) 
+//     {}
     
 // equality operator
 bool Vector3::operator ==(const Vector3 &other) const

@@ -33,7 +33,7 @@ public:
     Homogeneous4(float X, float Y, float Z, float W = 1.0);
     Homogeneous4(const Point3 &other);
     Homogeneous4(const Vector3 &other);
-    Homogeneous4(const Homogeneous4 &other);
+    // Homogeneous4(const Homogeneous4 &other);
 
     // routine to get a point by perspective division
     Point3 Point() const;

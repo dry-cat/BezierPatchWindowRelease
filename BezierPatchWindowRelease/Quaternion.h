@@ -56,7 +56,7 @@ class Quaternion
     Quaternion(const Vector3 &axis, float theta);
 
     // Copy another Quaternion & return self
-    Quaternion &operator = (const Quaternion &other);
+    // Quaternion &operator = (const Quaternion &other);
     
     // Computes the norm (sum of squares)
     float Norm() const;

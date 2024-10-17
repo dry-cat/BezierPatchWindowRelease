@@ -74,19 +74,19 @@ class RenderParameters
     // constructor
     RenderParameters(ControlPoints *newPatchControlPoints)
         :
+        patchControlPoints(newPatchControlPoints),
         xTranslate(0.0),
         yTranslate(0.0),
         zTranslate(1.4), // zoom in a little bit by default
+        theClearColor{0.0f, 0.0f, 0.0f, 255.0f},
         planesEnabled(true),
         netEnabled(true),
         verticesEnabled(true),
         bezierEnabled(false),
         orthoProjection(true),
         triggerResize(false),
-        theClearColor{0.0f, 0.0f, 0.0f, 255.0f},
         windowSize(640),
-        activeVertex(0),
-        patchControlPoints(newPatchControlPoints)
+        activeVertex(0)
         { // constructor
         // because we are paranoid, we will initialise the matrices to the identity
         rotationMatrix.SetIdentity();

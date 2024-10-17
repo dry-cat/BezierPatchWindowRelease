@@ -149,8 +149,8 @@ void BezierPatchRenderWidget::SetPixel(Homogeneous4 coords, const RGBAValue &col
         // convert from NDCS to DCS - viewport transformation
         float near = 0.0f;
         float far = 2.0f;
-        P.x = frameBuffer.width / 2.0f * P.x + (P.x + frameBuffer.width / 2.0f);
-        P.y = frameBuffer.height / 2.0f * P.y + (P.y + frameBuffer.height / 2.0f);
+        P.x = width / 2.0f * P.x + (P.x + width / 2.0f);
+        P.y = height / 2.0f * P.y + (P.y + height / 2.0f);
         P.z = (far - near) / 2.0f * P.z + (far + near) / 2.0f;
 
         auto y = static_cast<int>(std::round(P.y));
@@ -202,7 +202,7 @@ void BezierPatchRenderWidget::paintGL()
 
     if(renderParameters->verticesEnabled)
     {// UI control for showing vertices
-        for(int i = 0 ; i < (*patchControlPoints).vertices.size(); i++)
+        for(int i = 0 ; i < static_cast<int>((*patchControlPoints).vertices.size()); i++)
         {
             // draw each vertex as a point
             // (paint the active vertex in red, ...
@@ -243,7 +243,7 @@ void BezierPatchRenderWidget::paintGL()
         DrawLine(Homogeneous4(midscreen), Homogeneous4(midTopScreen), blue);
 
         // Draw the flat plane (in brown)
-        RGBAValue yellow = {quarterIntensity, quarterIntensity, 0.0f, 255.0f};
+        // RGBAValue yellow = {quarterIntensity, quarterIntensity, 0.0f, 255.0f};
 
         // Refer to RenderWidget.cpp for the precise colours.
 

@@ -48,7 +48,7 @@ class Matrix4
     // constructor - initialize the matrix with values
     Matrix4(const std::array<std::array<float, 4>, 4> &m);
     // copy constructor
-    Matrix4(const Matrix4 &other);
+    // Matrix4(const Matrix4 &other);
     
     // equality operator
     bool operator ==(const Matrix4 &other) const;

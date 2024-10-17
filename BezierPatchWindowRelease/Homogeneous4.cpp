@@ -44,13 +44,13 @@ Homogeneous4::Homogeneous4(const Vector3 &other)
     w(0)
 {}
 
-Homogeneous4::Homogeneous4(const Homogeneous4 &other)
-    : 
-    x(other.x), 
-    y(other.y), 
-    z(other.z), 
-    w(other.w)
-    {}
+// Homogeneous4::Homogeneous4(const Homogeneous4 &other)
+//     : 
+//     x(other.x), 
+//     y(other.y), 
+//     z(other.z), 
+//     w(other.w)
+//     {}
 
 // routine to get a point by perspective division
 Point3 Homogeneous4::Point() const

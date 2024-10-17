@@ -99,7 +99,7 @@ void RenderWidget::initializeGL()
     glRotatef(7.0, 1.0, 1.0, 0.0);
 
     // // initialize the arcball
-    ArcBall arcballCamera();
+    ArcBall arcballCamera;
 
     // set up evaluators
     glEnable(GL_MAP2_VERTEX_3);
@@ -165,7 +165,8 @@ void RenderWidget::resizeGL(int w, int h)
 
 void RenderWidget::paintGL()
  { // RenderWidget::paintGL()
-    int i, j, k;
+    int i;
+    // int j, k;
 
     // if the projection/ortho matrix checkbox has been toggled:
     if(renderParameters->triggerResize)

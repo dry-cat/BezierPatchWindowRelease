@@ -28,12 +28,12 @@ Matrix4::Matrix4(const std::array<std::array<float, 4>, 4> &m)
             coordinates[row][col] = m[row][col];
     }
 
-Matrix4::Matrix4(const Matrix4 &other)
-    { // copy constructor
-    for (int row = 0; row < 4; row++)
-        for (int col = 0; col < 4; col++)
-            coordinates[row][col] = other.coordinates[row][col];
-    } // copy constructor
+// Matrix4::Matrix4(const Matrix4 &other)
+//     { // copy constructor
+//     for (int row = 0; row < 4; row++)
+//         for (int col = 0; col < 4; col++)
+//             coordinates[row][col] = other.coordinates[row][col];
+//     } // copy constructor
 
 // equality operator
 bool Matrix4::operator ==(const Matrix4 &other) const

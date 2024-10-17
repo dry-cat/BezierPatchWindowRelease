@@ -80,13 +80,13 @@ Quaternion::Quaternion(const Vector3 &axis, float theta)
     (*this) = Quaternion(axis.unit() * sin(theta)) + Quaternion(cos(theta));
     } // Quaternion()
 
-// Copy another Quaternion & return self
-Quaternion &Quaternion::operator = (const Quaternion &other)
-    { // copy quaternion
-    for (int i = 0; i < 4; i++)
-        coords[i] = other.coords[i];
-    return (*this); 
-    } // copy quaternion
+// // Copy another Quaternion & return self
+// Quaternion &Quaternion::operator = (const Quaternion &other)
+//     { // copy quaternion
+//     for (int i = 0; i < 4; i++)
+//         coords[i] = other.coords[i];
+//     return (*this); 
+//     } // copy quaternion
 
 // Computes the norm (sum of squares)
 float Quaternion::Norm() const
