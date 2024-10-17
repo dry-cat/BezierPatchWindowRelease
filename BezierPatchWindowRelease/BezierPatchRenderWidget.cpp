@@ -90,7 +90,8 @@ void BezierPatchRenderWidget::SetPixel(Homogeneous4 coords, const RGBAValue &col
         renderParameters->modelviewMatrix = renderParameters->rotationMatrix * renderParameters->modelviewMatrix;
         renderParameters->modelviewMatrix[0][3] = renderParameters->xTranslate;
         renderParameters->modelviewMatrix[1][3] = renderParameters->yTranslate;
-        renderParameters->modelviewMatrix[2][3] = renderParameters->zTranslate;
+        // NOTE: hardcored translation of z - 8 to match RenderWidget
+        renderParameters->modelviewMatrix[2][3] = renderParameters->zTranslate - 8;
 
         // convert from model space to view space
         coords = renderParameters->modelviewMatrix * coords;
@@ -105,26 +106,39 @@ void BezierPatchRenderWidget::SetPixel(Homogeneous4 coords, const RGBAValue &col
 
         // TODO: store this properly and only change it on renderParameters->triggerResize
         // TODO: explain
-        auto SetProjMatrix = [&](float r, float t, float n, float f){
+        auto SetOrthoMatrix = [&projMatrix](float r, float t, float n, float f) {
                 projMatrix[0][0] = 1.0f / r;
                 projMatrix[1][1] = 1.0f / t;
                 projMatrix[2][2] = -2.0f / (f - n);
                 projMatrix[2][3] = -(f + n)/(f - n);
         };
 
+        auto SetPerspMatrix = [&projMatrix](float r, float t, float n, float f) {
+            projMatrix[0][0] = n / r;
+            projMatrix[1][1] = n / t;
+            projMatrix[2][2] = -(f + n) / (f - n);
+            projMatrix[2][3] = -2.0f * f * n / (f - n);
+            projMatrix[3][2] = -1.0f;
+        };
+
         float nearPlane = 0.01f;
         float farPlane = 200.0f;
-        float scale = 10.0f / renderParameters->zTranslate;
-        float adjustedScale = aspectRatio * 10.0f / renderParameters->zTranslate;
         if (renderParameters->orthoProjection) {
+            float scale = 10.0f / renderParameters->zTranslate;
+            float adjustedScale = aspectRatio * 10.0f / renderParameters->zTranslate;
             if (aspectRatio > 1.0f) {
-                SetProjMatrix(adjustedScale, scale, nearPlane, farPlane);
+                SetOrthoMatrix(adjustedScale, scale, nearPlane, farPlane);
             } else {
-                SetProjMatrix(scale, adjustedScale, nearPlane, farPlane);
+                SetOrthoMatrix(scale, adjustedScale, nearPlane, farPlane);
             }
         } else {
-            std::cerr << "Error perspective projection not implemented yet.";
-            std::exit(EXIT_FAILURE);
+            float scale = 0.01f;
+            float adjustedScale = aspectRatio * 0.01f;
+            if (aspectRatio > 1.0f) {
+                SetPerspMatrix(adjustedScale, scale, nearPlane, farPlane);
+            } else {
+                SetPerspMatrix(scale, adjustedScale, nearPlane, farPlane);
+            }
         }
 
         coords = projMatrix * coords;
