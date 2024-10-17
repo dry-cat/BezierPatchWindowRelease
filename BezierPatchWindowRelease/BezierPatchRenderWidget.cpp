@@ -80,16 +80,91 @@ void BezierPatchRenderWidget::resizeGL(int w, int h)
     } // BezierPatchRenderWidget::resizeGL()
 
 
+// TODO: This will cause a crash if the window is resized small enough
+void BezierPatchRenderWidget::SetPixel(Homogeneous4 coords, const RGBAValue &color) {
+        // std::cout << "coords start: " << coords << '\n';
+
+        // std::cout << "modelviewMatrix: " << renderParameters->modelviewMatrix;
+
+        // convert from model space to view space
+        coords = renderParameters->modelviewMatrix * coords;
+
+        // convert from view space to clipping space - projection matrix
+        Matrix4 projMatrix;
+        projMatrix.SetIdentity();
+
+        // compute the aspect ratio of the widget
+        float aspectRatio = static_cast<float>(renderParameters->windowWidth) /
+                                static_cast<float>(renderParameters->windowHeight);
+
+        // std::cout << "aspectRatio: " << aspectRatio << '\n';
+
+        // TODO: Solve wrap around bug
+        // TODO: Solve segfault bug
+
+        // TODO: store this properly and only change it on renderParameters->triggerResize
+        // TODO: explain
+        auto SetProjMatrix = [&](float l, float r, float b, float t, float n, float f){
+                projMatrix[0][0] = 2.0f / (r - l);
+                projMatrix[1][1] = 2.0f / (t - b);
+                projMatrix[2][2] = -2.0f / (f - n);
+                projMatrix[0][3] = -(r+l)/(r-l);
+                projMatrix[1][3] = -(t+b)/(t-b);
+                projMatrix[2][3] = -(f+n)/(f-n);
+        };
+
+        if (renderParameters->orthoProjection) {
+            if (aspectRatio > 1.0) {
+                SetProjMatrix(-aspectRatio * 10.0f / renderParameters->zTranslate,
+                    aspectRatio * 10.0f / renderParameters->zTranslate,
+                        -10.0f / renderParameters->zTranslate,
+                        -10.0f / renderParameters->zTranslate,
+                        0.01f, 200.0f);
+            } else {
+                SetProjMatrix(-10.0f / renderParameters->zTranslate,
+                    10.0f / renderParameters->zTranslate,
+                    -aspectRatio * 10.0f / renderParameters->zTranslate,
+                    aspectRatio * 10.0f / renderParameters->zTranslate,
+                    0.01f, 200.0f);
+            }
+            // std::cout << "zTranslate: " << renderParameters->zTranslate << '\n';
+        } else {
+            std::cerr << "Error perspective projection not implemented yet.";
+            std::exit(EXIT_FAILURE);
+        }
+
+        // std::cout << "projMatrix: " << projMatrix << '\n';
+
+        coords = projMatrix * coords;
+
+        // std::cout << "coords: " << coords << '\n';
+
+        // convert from clipping space to NDCS - perspective division
+        Point3 P = coords.Point();
+
+        // std::cout << "P: " << P << '\n';
+
+        auto width = static_cast<float>(frameBuffer.width);
+        auto height = static_cast<float>(frameBuffer.height);
+        // convert from NDCS to DCS - viewport transformation
+        float near = 0.0f;
+        float far = 2.0f;
+        P.x = frameBuffer.width / 2.0f * P.x + (P.x + frameBuffer.width / 2.0f);
+        P.y = frameBuffer.height / 2.0f * P.y + (P.y + frameBuffer.height / 2.0f);
+        P.z = (far - near) / 2.0f * P.z + (far + near) / 2.0f;
+
+        auto y = static_cast<int>(std::round(P.y));
+        auto x = static_cast<int>(std::round(P.x));
+        frameBuffer[y][x] = color;
+}
 
 void BezierPatchRenderWidget::DrawLine(const Homogeneous4 &A, const Homogeneous4 &B, const RGBAValue &color) {
     for (float alpha = 0.0f; alpha <= 1.0f; alpha += 0.001f) {
         float beta = 1.0f - alpha;
 
-        Point3 P = (alpha*A + beta*B).Point();
+        Homogeneous4 P = (alpha*A + beta*B);
 
-        auto y = static_cast<int>(std::round(P.y));
-        auto x = static_cast<int>(std::round(P.x));
-        frameBuffer[y][x] = color;
+        SetPixel(P, color);
     }
 }
 
@@ -120,6 +195,11 @@ void BezierPatchRenderWidget::paintGL()
     Matrix4 identity_matrix;
     identity_matrix.SetIdentity();
 
+    renderParameters->modelviewMatrix.SetTranslation(
+        Vector3(renderParameters->xTranslate,
+                renderParameters->yTranslate,
+                renderParameters->zTranslate));
+
     if(renderParameters->verticesEnabled)
     {// UI control for showing vertices
         for(int i = 0 ; i < (*patchControlPoints).vertices.size(); i++)
@@ -147,17 +227,11 @@ void BezierPatchRenderWidget::paintGL()
 
         // Planes are axis aligned grids made up of lines
 
-        Point3 midscreen{std::floor(static_cast<float>(frameBuffer.width) / 2.0f),
-            std::floor(static_cast<float>(frameBuffer.height) / 2.0f),
-            0.0f};
+        Point3 midscreen{0.0f, 0.0f, 0.0f};
 
-        Point3 midTopScreen{std::floor(static_cast<float>(frameBuffer.width) / 2.0f),
-            std::floor(static_cast<float>(frameBuffer.height)),
-            0.0f};
+        Point3 midTopScreen{0.0f, 5.0f, 0.0f};
 
-        Point3 midRightScreen{std::floor(static_cast<float>(frameBuffer.width)),
-            std::floor(static_cast<float>(frameBuffer.height) / 2.0f),
-            0.0f};
+        Point3 midRightScreen{5.0f, 0.0f, 0.0f};
 
         float quarterIntensity = 0.25f * 255.0f;
         // Draw the horizontal x axis plane (in purple)

@@ -76,6 +76,7 @@ class BezierPatchRenderWidget : public QOpenGLWidget
 
     private:
 
+	void SetPixel(Homogeneous4 coords, const RGBAValue &color);
 	void DrawLine(const Homogeneous4 &A, const Homogeneous4 &B, const RGBAValue &color);
 
     void forceRepaint();
