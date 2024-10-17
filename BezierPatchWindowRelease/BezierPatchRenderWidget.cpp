@@ -276,6 +276,9 @@ void BezierPatchRenderWidget::paintGL()
      // (control points connected with lines)
     }// UI control for showing the Bezier control net
 
+    // float quarterIntensity = 0.25f * 255.0f;
+    // RGBAValue red = {quarterIntensity, 0.0f, 0.0f, 255.0f};
+    // DrawCircle(Homogeneous4(0,0,0,1), 10.0f, red);
 
     if(renderParameters->bezierEnabled)
     {// UI control for showing the Bezier curve
