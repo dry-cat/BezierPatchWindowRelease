@@ -3,7 +3,7 @@
 ######################################################################
 
 QT+=core gui widgets opengl openglwidgets
-QMAKE_CXXFLAGS+= -fopenmp -Wall -Werror -Wno-deprecated -Wno-deprecated-declarations
+QMAKE_CXXFLAGS+= -fno-omit-frame-pointer -fopenmp -g -Wall -Werror -Wno-deprecated -Wno-deprecated-declarations
 LIBS += -lGL -lGLU -fopenmp
 TEMPLATE = app
 TARGET = BezierPatchWindowRelease

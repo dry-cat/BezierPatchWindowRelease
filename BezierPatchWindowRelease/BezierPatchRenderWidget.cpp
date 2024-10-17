@@ -155,7 +155,15 @@ void BezierPatchRenderWidget::SetPixel(Homogeneous4 coords, const RGBAValue &col
 
         auto y = static_cast<int>(std::round(P.y));
         auto x = static_cast<int>(std::round(P.x));
-        frameBuffer[y][x] = color;
+
+        if (y >= frameBuffer.height || x >= frameBuffer.width) {
+            std::cout << "x: " << x << " y: " << y << '\n';
+            std::cout << "P: " << P << '\n';
+        }
+
+        frameBuffer[frameBuffer.height][frameBuffer.width] = color;
+
+        // frameBuffer[y][x] = color;
 }
 
 void BezierPatchRenderWidget::DrawLine(const Homogeneous4 &A, const Homogeneous4 &B, const RGBAValue &color) {
