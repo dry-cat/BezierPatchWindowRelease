@@ -103,8 +103,6 @@ void BezierPatchRenderWidget::SetPixel(Homogeneous4 coords, const RGBAValue &col
         float aspectRatio = static_cast<float>(renderParameters->windowWidth) /
                                 static_cast<float>(renderParameters->windowHeight);
 
-        // TODO: Solve segfault bug
-
         // TODO: store this properly and only change it on renderParameters->triggerResize
         // TODO: explain
         auto SetProjMatrix = [&](float r, float t, float n, float f){
@@ -114,24 +112,30 @@ void BezierPatchRenderWidget::SetPixel(Homogeneous4 coords, const RGBAValue &col
                 projMatrix[2][3] = -(f + n)/(f - n);
         };
 
-        float n = 0.01f;
-        float f = 200.0f;
+        float nearPlane = 0.01f;
+        float farPlane = 200.0f;
         float scale = 10.0f / renderParameters->zTranslate;
         float adjustedScale = aspectRatio * 10.0f / renderParameters->zTranslate;
         if (renderParameters->orthoProjection) {
             if (aspectRatio > 1.0f) {
-                SetProjMatrix(adjustedScale, scale, n, f);
+                SetProjMatrix(adjustedScale, scale, nearPlane, farPlane);
             } else {
-                SetProjMatrix(scale, adjustedScale, n, f);
+                SetProjMatrix(scale, adjustedScale, nearPlane, farPlane);
             }
         } else {
             std::cerr << "Error perspective projection not implemented yet.";
             std::exit(EXIT_FAILURE);
         }
 
-        // std::cout << "projMatrix: " << projMatrix << '\n';
-
         coords = projMatrix * coords;
+        // std::cout << "clip space coords: " << coords << '\n';
+
+        // TODO: why doesn't z-clipping work?
+        // perform per pixel clipping
+        if (coords.x < -coords.w || coords.x > coords.w ||
+            coords.y < -coords.w || coords.y > coords.w) {
+            return;
+        }
 
         // std::cout << "coords: " << coords << '\n';
 
@@ -143,24 +147,21 @@ void BezierPatchRenderWidget::SetPixel(Homogeneous4 coords, const RGBAValue &col
         auto width = static_cast<float>(frameBuffer.width);
         auto height = static_cast<float>(frameBuffer.height);
         // convert from NDCS to DCS - viewport transformation
-        float near = 0.0f;
-        float far = 2.0f;
-        P.x = width / 2.0f * P.x + (P.x + width / 2.0f);
-        P.y = height / 2.0f * P.y + (P.y + height / 2.0f);
-        P.z = (far - near) / 2.0f * P.z + (far + near) / 2.0f;
+        float N = 0.0f;
+        float F = 1.0f;
+        float X = 0.0f;
+        float Y = 0.0f;
+        Matrix4 viewportTransform{ { {
+            { {width / 2.0f, 0.0f,          0.0f,           width / 2.0f} },
+            { {0.0f,         height / 2.0f, 0.0f,           height / 2.0f} },
+            { {0.0f,         0.0f,          (F - N) / 2.0f, (F + N) / 2.0f} },
+            { {0.0f,         0.0f,          0.0f,           1.0f} }
+        } } };
 
-        auto y = static_cast<long>(std::round(P.y));
-        auto x = static_cast<long>(std::round(P.x));
+        coords = viewportTransform * Homogeneous4(P);
 
-        // if ((std::abs(height - y) > 2.0f) ||
-        //     (std::abs(width - x) > 2.0f)) {
-        //     std::cout << "width: " << width << " height: " << height << '\n';
-        //     std::cout << "x: " << x << " y: " << y << '\n';
-        //     std::cout << "P: " << P << '\n';
-        // }
-
-        y = std::min(y, frameBuffer.height);
-        x = std::min(x, frameBuffer.width);
+        auto x = static_cast<long>(coords.x);
+        auto y = static_cast<long>(coords.y);
 
         frameBuffer[y][x] = color;
 }
