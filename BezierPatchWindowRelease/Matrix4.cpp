@@ -169,7 +169,7 @@ void Matrix4::SetTranslation(const Vector3 &vector)
     SetIdentity();
 
     // put the translation in the w column
-    for (int row = 0; row < 4; row++)
+    for (int row = 0; row < 3; row++)
         coordinates[row][3] = vector[row];
 
     } // SetTranslation()
