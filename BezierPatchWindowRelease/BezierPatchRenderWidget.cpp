@@ -304,7 +304,28 @@ void BezierPatchRenderWidget::paintGL()
 
     if(renderParameters->netEnabled)
     {// UI control for showing the Bezier control net
-     // (control points connected with lines)
+        // (control points connected with lines)
+        // TODO: Refactor
+        RGBAValue color = {0.0f, 1.0f * 255.0f, 0.0f, 255.0f};
+        for (int i = 0; i < 4; i++) {
+            auto A = Homogeneous4(patchControlPoints->vertices[i*4+0]);
+            auto B = Homogeneous4(patchControlPoints->vertices[i*4+1]);
+            auto C = Homogeneous4(patchControlPoints->vertices[i*4+2]);
+            auto D = Homogeneous4(patchControlPoints->vertices[i*4+3]);
+            DrawLine(A, B, color);
+            DrawLine(B, C, color);
+            DrawLine(C, D, color);
+        }
+
+        for (int j = 0; j < 4; j++) {
+            auto A = Homogeneous4(patchControlPoints->vertices[0*4+j]);
+            auto B = Homogeneous4(patchControlPoints->vertices[1*4+j]);
+            auto C = Homogeneous4(patchControlPoints->vertices[2*4+j]);
+            auto D = Homogeneous4(patchControlPoints->vertices[3*4+j]);
+            DrawLine(A, B, color);
+            DrawLine(B, C, color);
+            DrawLine(C, D, color);
+        }
     }// UI control for showing the Bezier control net
 
     if(renderParameters->bezierEnabled)
