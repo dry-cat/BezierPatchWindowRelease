@@ -85,13 +85,6 @@ void BezierPatchRenderWidget::SetPixel(Homogeneous4 coords, const RGBAValue &col
         // std::cout << "coords start: " << coords << '\n';
 
         // std::cout << "modelviewMatrix: " << renderParameters->modelviewMatrix;
-        renderParameters->modelviewMatrix.SetIdentity();
-
-        renderParameters->modelviewMatrix = renderParameters->rotationMatrix * renderParameters->modelviewMatrix;
-        renderParameters->modelviewMatrix[0][3] = renderParameters->xTranslate;
-        renderParameters->modelviewMatrix[1][3] = renderParameters->yTranslate;
-        // NOTE: hardcored translation of z - 9 to match RenderWidget
-        renderParameters->modelviewMatrix[2][3] = renderParameters->zTranslate - 9;
 
         // convert from model space to view space
         coords = renderParameters->modelviewMatrix * coords;
@@ -222,30 +215,14 @@ void BezierPatchRenderWidget::paintGL()
     glClearColor(0.8, 0.8, 0.6, 1.0);
     glClear(GL_COLOR_BUFFER_BIT);
 
-    Matrix4 identity_matrix;
-    identity_matrix.SetIdentity();
+    renderParameters->modelviewMatrix.SetIdentity();
 
-    if(renderParameters->verticesEnabled)
-    {// UI control for showing vertices
-        for(int i = 0 ; i < static_cast<int>(patchControlPoints->vertices.size()); i++)
-        {
-            // draw each vertex as a point
-            // (paint the active vertex in red, ...
-            //  ... keep the others in white)
-            RGBAValue color{};
-            if (i == renderParameters->activeVertex) {
-                color = RGBAValue{255.0f, 0.0f, 0.0f, 1.0f};
-            } else {
-                float intensity = 0.75f * 255.0f;
-                color = RGBAValue{intensity, intensity, intensity, 255.0f};
-            }
+    renderParameters->modelviewMatrix = renderParameters->rotationMatrix * renderParameters->modelviewMatrix;
 
-            // auto vertex = (*patchControlPoints).vertices[(i/4)*4+(i%4)];
-            // std::cout << "vertex: " << vertex << '\n';
-
-            // consider ways to make the rendered points bigger than just 1x1 pixel on the screen
-        }
-    }// UI control for showing vertices
+    renderParameters->modelviewMatrix[0][3] = renderParameters->xTranslate;
+    renderParameters->modelviewMatrix[1][3] = renderParameters->yTranslate;
+    // NOTE: hardcored translation of z - 9 to match RenderWidget
+    renderParameters->modelviewMatrix[2][3] = renderParameters->zTranslate - 9;
 
     if(renderParameters->planesEnabled)
     {// UI control for showing axis-aligned planes
@@ -294,14 +271,41 @@ void BezierPatchRenderWidget::paintGL()
 
     }// UI control for showing axis-aligned planes
 
+    if(renderParameters->verticesEnabled)
+    {// UI control for showing vertices
+        for(int i = 0 ; i < 16; i++)
+        {
+            // draw each vertex as a point
+            // (paint the active vertex in red, ...
+            //  ... keep the others in white)
+            RGBAValue color{};
+            if (i == renderParameters->activeVertex) {
+                color = RGBAValue{255.0f, 0.0f, 0.0f, 1.0f};
+            } else {
+                float intensity = 0.75f * 255.0f;
+                color = RGBAValue{intensity, intensity, intensity, 255.0f};
+            }
+
+            Point3 vertex = patchControlPoints->vertices[(i/4)*4+(i%4)];
+            double radius = 0.1;
+            for (float phi = 0.0; phi < 2.f*PI; phi += PI / 30.0)
+                for (float theta = 0.0; theta < 2.f*PI; theta += PI / 30.0)
+                    SetPixel(
+                        Homogeneous4(
+                            vertex.x + radius * cos(phi) * cos(theta),
+                            vertex.y + radius * cos(phi) * sin(theta),
+                            vertex.z + radius * sin(phi),
+                            1.0f),
+                        color);
+
+            // consider ways to make the rendered points bigger than just 1x1 pixel on the screen
+        }
+    }// UI control for showing vertices
+
     if(renderParameters->netEnabled)
     {// UI control for showing the Bezier control net
      // (control points connected with lines)
     }// UI control for showing the Bezier control net
-
-    // float quarterIntensity = 0.25f * 255.0f;
-    // RGBAValue red = {quarterIntensity, 0.0f, 0.0f, 255.0f};
-    // DrawCircle(Homogeneous4(0,0,0,1), 10.0f, red);
 
     if(renderParameters->bezierEnabled)
     {// UI control for showing the Bezier curve
