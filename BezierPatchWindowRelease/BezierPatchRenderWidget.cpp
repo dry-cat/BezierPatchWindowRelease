@@ -90,8 +90,8 @@ void BezierPatchRenderWidget::SetPixel(Homogeneous4 coords, const RGBAValue &col
         renderParameters->modelviewMatrix = renderParameters->rotationMatrix * renderParameters->modelviewMatrix;
         renderParameters->modelviewMatrix[0][3] = renderParameters->xTranslate;
         renderParameters->modelviewMatrix[1][3] = renderParameters->yTranslate;
-        // NOTE: hardcored translation of z - 8 to match RenderWidget
-        renderParameters->modelviewMatrix[2][3] = renderParameters->zTranslate - 8;
+        // NOTE: hardcored translation of z - 9 to match RenderWidget
+        renderParameters->modelviewMatrix[2][3] = renderParameters->zTranslate - 9;
 
         // convert from model space to view space
         coords = renderParameters->modelviewMatrix * coords;
@@ -100,25 +100,31 @@ void BezierPatchRenderWidget::SetPixel(Homogeneous4 coords, const RGBAValue &col
         Matrix4 projMatrix;
         projMatrix.SetIdentity();
 
+        Matrix4 multMatrix;
+
         // compute the aspect ratio of the widget
         float aspectRatio = static_cast<float>(renderParameters->windowWidth) /
                                 static_cast<float>(renderParameters->windowHeight);
 
         // TODO: store this properly and only change it on renderParameters->triggerResize
         // TODO: explain
-        auto SetOrthoMatrix = [&projMatrix](float r, float t, float n, float f) {
-                projMatrix[0][0] = 1.0f / r;
-                projMatrix[1][1] = 1.0f / t;
-                projMatrix[2][2] = -2.0f / (f - n);
-                projMatrix[2][3] = -(f + n)/(f - n);
+        auto SetOrthoMatrix = [&projMatrix, &multMatrix](float r, float t, float n, float f) {
+                multMatrix[0][0] = 1.0f / r;
+                multMatrix[1][1] = 1.0f / t;
+                multMatrix[2][2] = -2.0f / (f - n);
+                multMatrix[2][3] = -(f + n)/(f - n);
+                multMatrix[3][3] = 1.0f;
+                projMatrix = projMatrix * multMatrix;
         };
 
-        auto SetPerspMatrix = [&projMatrix](float r, float t, float n, float f) {
-            projMatrix[0][0] = n / r;
-            projMatrix[1][1] = n / t;
-            projMatrix[2][2] = -(f + n) / (f - n);
-            projMatrix[2][3] = -2.0f * f * n / (f - n);
-            projMatrix[3][2] = -1.0f;
+        auto SetPerspMatrix = [&projMatrix, &multMatrix](float r, float t, float n, float f) {
+            multMatrix[0][0] = n / r;
+            multMatrix[1][1] = n / t;
+            multMatrix[2][2] = -(f + n) / (f - n);
+            multMatrix[2][3] = -2.0f * f * n / (f - n);
+            multMatrix[3][2] = -1.0f;
+            multMatrix[3][3] = 0.0f;
+            projMatrix = projMatrix * multMatrix;
         };
 
         float nearPlane = 0.01f;
@@ -141,13 +147,16 @@ void BezierPatchRenderWidget::SetPixel(Homogeneous4 coords, const RGBAValue &col
             }
         }
 
+        // std::cout << projMatrix << '\n';
+
         coords = projMatrix * coords;
         // std::cout << "clip space coords: " << coords << '\n';
 
         // TODO: why doesn't z-clipping work?
         // perform per pixel clipping
         if (coords.x < -coords.w || coords.x > coords.w ||
-            coords.y < -coords.w || coords.y > coords.w) {
+            coords.y < -coords.w || coords.y > coords.w ||
+            coords.z < -coords.w || coords.z > coords.w) {
             return;
         }
 
