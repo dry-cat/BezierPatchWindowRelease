@@ -167,8 +167,8 @@ void BezierPatchRenderWidget::SetPixel(Homogeneous4 coords, const RGBAValue &col
         float X = 0.0f;
         float Y = 0.0f;
         Matrix4 viewportTransform{ { {
-            { {width / 2.0f, 0.0f,          0.0f,           width / 2.0f} },
-            { {0.0f,         height / 2.0f, 0.0f,           height / 2.0f} },
+            { {width / 2.0f, 0.0f,          0.0f,           X + width / 2.0f} },
+            { {0.0f,         height / 2.0f, 0.0f,           Y + height / 2.0f} },
             { {0.0f,         0.0f,          (F - N) / 2.0f, (F + N) / 2.0f} },
             { {0.0f,         0.0f,          0.0f,           1.0f} }
         } } };
