@@ -152,7 +152,6 @@ void BezierPatchRenderWidget::SetPixel(Homogeneous4 coords, const RGBAValue &col
         coords = projMatrix * coords;
         // std::cout << "clip space coords: " << coords << '\n';
 
-        // TODO: why doesn't z-clipping work?
         // perform per pixel clipping
         if (coords.x < -coords.w || coords.x > coords.w ||
             coords.y < -coords.w || coords.y > coords.w ||
