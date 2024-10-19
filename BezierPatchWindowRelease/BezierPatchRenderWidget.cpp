@@ -93,31 +93,27 @@ void BezierPatchRenderWidget::SetPixel(Homogeneous4 coords, const RGBAValue &col
         Matrix4 projMatrix;
         projMatrix.SetIdentity();
 
-        Matrix4 multMatrix;
-
         // compute the aspect ratio of the widget
         float aspectRatio = static_cast<float>(renderParameters->windowWidth) /
                                 static_cast<float>(renderParameters->windowHeight);
 
         // TODO: store this properly and only change it on renderParameters->triggerResize
         // TODO: explain
-        auto SetOrthoMatrix = [&projMatrix, &multMatrix](float r, float t, float n, float f) {
-                multMatrix[0][0] = 1.0f / r;
-                multMatrix[1][1] = 1.0f / t;
-                multMatrix[2][2] = -2.0f / (f - n);
-                multMatrix[2][3] = -(f + n)/(f - n);
-                multMatrix[3][3] = 1.0f;
-                projMatrix = projMatrix * multMatrix;
+        auto SetOrthoMatrix = [&projMatrix](float r, float t, float n, float f) {
+            projMatrix[0][0] = 1.0f / r;
+            projMatrix[1][1] = 1.0f / t;
+            projMatrix[2][2] = -2.0f / (f - n);
+            projMatrix[2][3] = -(f + n)/(f - n);
+            projMatrix[3][3] = 1.0f;
         };
 
-        auto SetPerspMatrix = [&projMatrix, &multMatrix](float r, float t, float n, float f) {
-            multMatrix[0][0] = n / r;
-            multMatrix[1][1] = n / t;
-            multMatrix[2][2] = -(f + n) / (f - n);
-            multMatrix[2][3] = -2.0f * f * n / (f - n);
-            multMatrix[3][2] = -1.0f;
-            multMatrix[3][3] = 0.0f;
-            projMatrix = projMatrix * multMatrix;
+        auto SetPerspMatrix = [&projMatrix](float r, float t, float n, float f) {
+            projMatrix[0][0] = n / r;
+            projMatrix[1][1] = n / t;
+            projMatrix[2][2] = -(f + n) / (f - n);
+            projMatrix[2][3] = -2.0f * f * n / (f - n);
+            projMatrix[3][2] = -1.0f;
+            projMatrix[3][3] = 0.0f;
         };
 
         float nearPlane = 0.01f;
