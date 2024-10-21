@@ -302,6 +302,7 @@ void BezierPatchRenderWidget::paintGL()
     {// UI control for showing the Bezier control net
         // (control points connected with lines)
         // TODO: Refactor
+        std::cout << patchControlPoints->vertices.size() << '\n';
         RGBAValue color = {0.0f, 1.0f * 255.0f, 0.0f, 255.0f};
         for (int i = 0; i < 4; i++) {
             auto A = Homogeneous4(patchControlPoints->vertices[i*4+0]);
@@ -324,17 +325,93 @@ void BezierPatchRenderWidget::paintGL()
         }
     }// UI control for showing the Bezier control net
 
+// void DrawBezier()
+// { // DrawBezier()
+//     for (float t = 0.0; t <= 1.0; t += 0.01)
+//     { // parameter loop
+//         for (int diag = N_PTS-2; diag >= 0; diag--)
+//         { // diagonal loop
+//             for (int i = 0; i <= diag; i++)
+//             { // i loop
+//                 int j = diag - i;
+//                 bezPoints[i][j] = (1.0-t)*bezPoints[i][j+1] + t*bezPoints[i+1][j];
+//             } // i loop
+//         } // diagonal loop
+//         // set the pixel for this parameter value
+//         SetPixel(bezPoints[0][0]);
+//     } // parameter loop
+// } // DrawBezier()
+
+    // for (int i = 0; i < 4; i++) {
+    //     for (int j = 0; j < 4; j++) {
+    //         std::cout << patchControlPoints->vertices[i*4+j] << "    ";
+    //     }
+    //     std::cout << '\n';
+    // }
+    // std::cout << '\n';
+
+    static constexpr int N_PTS = 4;
+    Homogeneous4 bezPoints[N_PTS][N_PTS];
+    // for (auto &arr : bezPoints)
+    //     std::fill(std::begin(arr), std::end(arr), Homogeneous4(0, 0, 0, 1));
+    for (int i = 0; i < 4; i++) {
+        for (int j = 0; j < 4; j++) {
+            bezPoints[j][i] = Homogeneous4(patchControlPoints->vertices[i*4+j]);
+        }
+    }
+    for (int i = 0; i < 4; i++) {
+        for (int j = 0; j < 4; j++) {
+            std::cout << bezPoints[i][j] << "    ";
+        }
+        std::cout << '\n';
+    }
+
+    auto DrawBezier = [this](int row) {
+        static constexpr int N_PTS = 4;
+        std::vector<std::vector<Homogeneous4>> bezPoints(N_PTS, std::vector<Homogeneous4>(N_PTS));
+
+        for (int i = 0; i < 4)
+            bezPoints[i][i] = Homogeneous4(patchControlPoints->vertices[row*4+i]);
+
+        return bezPoints;
+    };
+
     if(renderParameters->bezierEnabled)
     {// UI control for showing the Bezier curve
-        for (float s = 0.0; s <= 1.0; s += 0.01)
-        {// s parameter loop
+        // for (float s = 0.0; s <= 1.0; s += 0.01)
+        // {
+
+        for (int row = 0; row < 4; row++) {
 
             for (float t = 0.0; t <= 1.0; t += 0.01)
-            { // t parameter loop
+            {
+                for (int diag = N_PTS - 2; diag >= 0; diag--) {
+                    for (int i = 0; i <= diag; i++) {
+                        int j = diag - i;
+                        bezPoints[i][j] = (1.0-t)*bezPoints[i][j+1] + t*bezPoints[i+1][j];
+                    }
+                }
 
                 // set the pixel for this parameter value using s, t for colour
-            } // t parameter loop
-        } // s parameter loop
+                RGBAValue red = {0.25f*255.0f, 0.0f, 0.0f, 255.0f};
+                Homogeneous4 vertex = bezPoints[0][0];
+                SetPixel(vertex, red);
+                // std::cout << vertex << '\n';
+                // double radius = 0.1;
+                // for (float phi = 0.0; phi < 2.f*PI; phi += PI / 30.0)
+                //     for (float theta = 0.0; theta < 2.f*PI; theta += PI / 30.0)
+                //         SetPixel(
+                //             Homogeneous4(
+                //                 vertex.x + radius * cos(phi) * cos(theta),
+                //                 vertex.y + radius * cos(phi) * sin(theta),
+                //                 vertex.z + radius * sin(phi),
+                //                 vertex.w),
+                //             red);
+            }
+
+        }
+
+        // }
     }
 
     // Put the custom framebufer on the screen to display the image
