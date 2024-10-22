@@ -161,6 +161,12 @@ void BezierPatchRenderWidget::SetPixel(Homogeneous4 coords, const RGBAValue &col
         auto x = static_cast<long>(coords.x);
         auto y = static_cast<long>(coords.y);
 
+        // in case clipping in homogeneous coordinates didn't catch out of
+        // bounds values, due to floating point error, early return here.
+        if (x < 0 || y < 0 || x >= frameBuffer.width || y >= frameBuffer.height) {
+            return;
+        }
+
         frameBuffer[y][x] = color;
 }
 
