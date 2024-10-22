@@ -134,12 +134,8 @@ void BezierPatchRenderWidget::SetPixel(Homogeneous4 coords, const RGBAValue &col
 
         // std::cout << "modelviewMatrix: " << renderParameters->modelviewMatrix;
 
-        // convert from model space to view space
-        coords = renderParameters->modelviewMatrix * coords;
-
-        // std::cout << projMatrix << '\n';
-
-        coords = renderParameters->projMatrix * coords;
+        // convert from model space to view space to clipping space
+        coords = renderParameters->projMatrix * renderParameters->modelviewMatrix * coords;
         // std::cout << "clip space coords: " << coords << '\n';
 
         // perform per pixel clipping
