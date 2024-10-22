@@ -143,7 +143,7 @@ void BezierPatchRenderWidget::resizeGL(int w, int h)
 
 void BezierPatchRenderWidget::SetPixel(Homogeneous4 coords, const RGBAValue &color) {
         // convert from model space to view space to clipping space
-        coords = renderParameters->projMatrix * renderParameters->modelviewMatrix * coords;
+        // coords = renderParameters->projMatrix * renderParameters->modelviewMatrix * coords;
 
         // perform per pixel clipping
         if (coords.x <= -coords.w || coords.x >= coords.w ||
@@ -175,6 +175,8 @@ void BezierPatchRenderWidget::DrawLine(const Homogeneous4 &A, const Homogeneous4
         float beta = 1.0f - alpha;
 
         Homogeneous4 P = (alpha*A + beta*B);
+
+        P = renderParameters->projMatrix * renderParameters->modelviewMatrix * P;
 
         SetPixel(P, color);
     }
@@ -292,7 +294,8 @@ void BezierPatchRenderWidget::paintGL()
             for (float phi = 0.0; phi < 2.f*PI; phi += PI / 30.0)
                 for (float theta = 0.0; theta < 2.f*PI; theta += PI / 30.0)
                     SetPixel(
-                        Homogeneous4(
+                        renderParameters->projMatrix * renderParameters->modelviewMatrix
+                        * Homogeneous4(
                             vertex.x + radius * cos(phi) * cos(theta),
                             vertex.y + radius * cos(phi) * sin(theta),
                             vertex.z + radius * sin(phi),
@@ -343,7 +346,7 @@ void BezierPatchRenderWidget::paintGL()
     for (int j = 0; j < 4; j++) {
         for (int k = 0; k < 4; k++) {
             // std::cout << "i: " << N_PTS - 1 << " j: " << j << " k: " << k << '\n';
-            bezPoints[N_PTS - 1][j][k] = *it;
+            bezPoints[N_PTS - 1][j][k] = renderParameters->projMatrix * renderParameters->modelviewMatrix * *it;
             ++it;
         }
     }
