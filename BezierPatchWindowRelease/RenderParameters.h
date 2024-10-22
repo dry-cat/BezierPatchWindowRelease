@@ -48,6 +48,7 @@ class RenderParameters
     Matrix4 rotationMatrix;
     Matrix4 modelviewMatrix;
     Matrix4 projMatrix;
+    Matrix4 viewportTransformMatrix;
 
     // have the colour ready for framebuffer placeholders:
     RGBAValue theClearColor;
@@ -96,6 +97,7 @@ class RenderParameters
         rotationMatrix.SetIdentity();
         modelviewMatrix.SetIdentity();
         projMatrix.SetIdentity();
+        viewportTransformMatrix.SetIdentity();
         } // constructor
 
     ~RenderParameters(){

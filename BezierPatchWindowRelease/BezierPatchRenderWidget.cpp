@@ -124,6 +124,20 @@ void BezierPatchRenderWidget::resizeGL(int w, int h)
             SetPerspMatrix(scale, adjustedScale, nearPlane, farPlane);
         }
     }
+
+    auto width = static_cast<float>(frameBuffer.width);
+    auto height = static_cast<float>(frameBuffer.height);
+    // calculate viewport transformation matrix so we can convert from NDCS to DCS
+    float N = 0.0f;
+    float F = 1.0f;
+    float X = 0.0f;
+    float Y = 0.0f;
+    renderParameters->viewportTransformMatrix = { { {
+        { {width / 2.0f, 0.0f,          0.0f,           X + width / 2.0f} },
+        { {0.0f,         height / 2.0f, 0.0f,           Y + height / 2.0f} },
+        { {0.0f,         0.0f,          (F - N) / 2.0f, (F + N) / 2.0f} },
+        { {0.0f,         0.0f,          0.0f,           1.0f} }
+    } } };
 } // BezierPatchRenderWidget::resizeGL()
 
 
@@ -141,21 +155,8 @@ void BezierPatchRenderWidget::SetPixel(Homogeneous4 coords, const RGBAValue &col
         // convert from clipping space to NDCS - perspective division
         Point3 P = coords.Point();
 
-        auto width = static_cast<float>(frameBuffer.width);
-        auto height = static_cast<float>(frameBuffer.height);
         // convert from NDCS to DCS - viewport transformation
-        float N = 0.0f;
-        float F = 1.0f;
-        float X = 0.0f;
-        float Y = 0.0f;
-        Matrix4 viewportTransform{ { {
-            { {width / 2.0f, 0.0f,          0.0f,           X + width / 2.0f} },
-            { {0.0f,         height / 2.0f, 0.0f,           Y + height / 2.0f} },
-            { {0.0f,         0.0f,          (F - N) / 2.0f, (F + N) / 2.0f} },
-            { {0.0f,         0.0f,          0.0f,           1.0f} }
-        } } };
-
-        coords = viewportTransform * Homogeneous4(P);
+        coords = renderParameters->viewportTransformMatrix * Homogeneous4(P);
 
         auto x = static_cast<long>(coords.x);
         auto y = static_cast<long>(coords.y);
@@ -207,12 +208,16 @@ void BezierPatchRenderWidget::paintGL()
 
     renderParameters->modelviewMatrix.SetIdentity();
 
-    renderParameters->modelviewMatrix = renderParameters->rotationMatrix * renderParameters->modelviewMatrix;
-
-    renderParameters->modelviewMatrix[0][3] = renderParameters->xTranslate;
-    renderParameters->modelviewMatrix[1][3] = renderParameters->yTranslate;
     // NOTE: hardcored translation of z - 9 to match RenderWidget
-    renderParameters->modelviewMatrix[2][3] = renderParameters->zTranslate - 9;
+    Matrix4 translationMatrix{ { {
+        { {1.0f, 0.0f, 0.0f, renderParameters->xTranslate} },
+        { {0.0f, 1.0f, 0.0f, renderParameters->yTranslate} },
+        { {0.0f, 0.0f, 1.0f, renderParameters->zTranslate - 9} },
+        { {0.0f, 0.0f, 0.0f, 1.0f} }
+    } } };
+    renderParameters->modelviewMatrix = translationMatrix
+                                            * renderParameters->rotationMatrix
+                                            * renderParameters->modelviewMatrix;
 
     if(renderParameters->planesEnabled)
     {// UI control for showing axis-aligned planes
