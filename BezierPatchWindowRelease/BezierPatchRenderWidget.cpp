@@ -80,7 +80,7 @@ void BezierPatchRenderWidget::resizeGL(int w, int h)
 
     auto& projMatrix = renderParameters->projMatrix;
 
-    // convert from view space to clipping space - projection matrix
+    // calculate the projection matrix so we can convert from view space to clipping space
     projMatrix.SetIdentity();
 
     // compute the aspect ratio of the widget
@@ -340,7 +340,7 @@ void BezierPatchRenderWidget::paintGL()
                 for (int i = N_PTS - 2; i >= 0; i--) {
                     for (int k = 0; k <= i; k++) {
                         for (int j = 0; j <= i; j++) {
-                            // std::cout << "i: " << i << " j: " << j << " k: " << k << '\n';
+                            std::cout << "i: " << i << " j: " << j << " k: " << k << '\n';
                             bezPoints[i][j][k] = (1 - s)*(1 - t)*bezPoints[i+1][j][k]
                                                     + s*(1 - t)*bezPoints[i+1][j+1][k]
                                                     + (1 - s)*t*bezPoints[i+1][j][k+1]
