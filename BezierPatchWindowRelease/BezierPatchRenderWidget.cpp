@@ -337,8 +337,7 @@ void BezierPatchRenderWidget::paintGL()
     if(renderParameters->bezierEnabled)
     {// UI control for showing the Bezier curve
         for (float s = 0.0f; s <= 1.0f; s += 0.001f) {
-            for (float t = 0.0f; t <= 1.0f; t += 0.001f)
-            {
+            for (float t = 0.0f; t <= 1.0f; t += 0.001f) {
                 for (int i = N_PTS - 2; i >= 0; i--) {
                     for (int k = 0; k <= i; k++) {
                         for (int j = 0; j <= i; j++) {
