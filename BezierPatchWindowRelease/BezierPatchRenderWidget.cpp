@@ -74,10 +74,58 @@ void BezierPatchRenderWidget::initializeGL()
 
 // called every time the widget is resized
 void BezierPatchRenderWidget::resizeGL(int w, int h)
-    { // BezierPatchRenderWidget::resizeGL()
+{ // BezierPatchRenderWidget::resizeGL()
     // resize the render image
     frameBuffer.Resize(w, h);
-    } // BezierPatchRenderWidget::resizeGL()
+
+    auto& projMatrix = renderParameters->projMatrix;
+
+    // convert from view space to clipping space - projection matrix
+    projMatrix.SetIdentity();
+
+    // compute the aspect ratio of the widget
+    float aspectRatio = static_cast<float>(renderParameters->windowWidth) /
+                            static_cast<float>(renderParameters->windowHeight);
+
+    // TODO: store this properly and only change it on renderParameters->triggerResize
+    // TODO: explain
+    auto SetOrthoMatrix = [&projMatrix](float r, float t, float n, float f) {
+        projMatrix[0][0] = 1.0f / r;
+        projMatrix[1][1] = 1.0f / t;
+        projMatrix[2][2] = -2.0f / (f - n);
+        projMatrix[2][3] = -(f + n)/(f - n);
+        projMatrix[3][3] = 1.0f;
+    };
+
+    auto SetPerspMatrix = [&projMatrix](float r, float t, float n, float f) {
+        projMatrix[0][0] = n / r;
+        projMatrix[1][1] = n / t;
+        projMatrix[2][2] = -(f + n) / (f - n);
+        projMatrix[2][3] = -2.0f * f * n / (f - n);
+        projMatrix[3][2] = -1.0f;
+        projMatrix[3][3] = 0.0f;
+    };
+
+    float nearPlane = 0.01f;
+    float farPlane = 200.0f;
+    if (renderParameters->orthoProjection) {
+        float scale = 10.0f / renderParameters->zTranslate;
+        float adjustedScale = aspectRatio * 10.0f / renderParameters->zTranslate;
+        if (aspectRatio > 1.0f) {
+            SetOrthoMatrix(adjustedScale, scale, nearPlane, farPlane);
+        } else {
+            SetOrthoMatrix(scale, adjustedScale, nearPlane, farPlane);
+        }
+    } else {
+        float scale = 0.01f;
+        float adjustedScale = aspectRatio * 0.01f;
+        if (aspectRatio > 1.0f) {
+            SetPerspMatrix(adjustedScale, scale, nearPlane, farPlane);
+        } else {
+            SetPerspMatrix(scale, adjustedScale, nearPlane, farPlane);
+        }
+    }
+} // BezierPatchRenderWidget::resizeGL()
 
 
 // TODO: This will cause a crash if the window is resized small enough
@@ -89,56 +137,9 @@ void BezierPatchRenderWidget::SetPixel(Homogeneous4 coords, const RGBAValue &col
         // convert from model space to view space
         coords = renderParameters->modelviewMatrix * coords;
 
-        // convert from view space to clipping space - projection matrix
-        Matrix4 projMatrix;
-        projMatrix.SetIdentity();
-
-        // compute the aspect ratio of the widget
-        float aspectRatio = static_cast<float>(renderParameters->windowWidth) /
-                                static_cast<float>(renderParameters->windowHeight);
-
-        // TODO: store this properly and only change it on renderParameters->triggerResize
-        // TODO: explain
-        auto SetOrthoMatrix = [&projMatrix](float r, float t, float n, float f) {
-            projMatrix[0][0] = 1.0f / r;
-            projMatrix[1][1] = 1.0f / t;
-            projMatrix[2][2] = -2.0f / (f - n);
-            projMatrix[2][3] = -(f + n)/(f - n);
-            projMatrix[3][3] = 1.0f;
-        };
-
-        auto SetPerspMatrix = [&projMatrix](float r, float t, float n, float f) {
-            projMatrix[0][0] = n / r;
-            projMatrix[1][1] = n / t;
-            projMatrix[2][2] = -(f + n) / (f - n);
-            projMatrix[2][3] = -2.0f * f * n / (f - n);
-            projMatrix[3][2] = -1.0f;
-            projMatrix[3][3] = 0.0f;
-        };
-
-        float nearPlane = 0.01f;
-        float farPlane = 200.0f;
-        if (renderParameters->orthoProjection) {
-            float scale = 10.0f / renderParameters->zTranslate;
-            float adjustedScale = aspectRatio * 10.0f / renderParameters->zTranslate;
-            if (aspectRatio > 1.0f) {
-                SetOrthoMatrix(adjustedScale, scale, nearPlane, farPlane);
-            } else {
-                SetOrthoMatrix(scale, adjustedScale, nearPlane, farPlane);
-            }
-        } else {
-            float scale = 0.01f;
-            float adjustedScale = aspectRatio * 0.01f;
-            if (aspectRatio > 1.0f) {
-                SetPerspMatrix(adjustedScale, scale, nearPlane, farPlane);
-            } else {
-                SetPerspMatrix(scale, adjustedScale, nearPlane, farPlane);
-            }
-        }
-
         // std::cout << projMatrix << '\n';
 
-        coords = projMatrix * coords;
+        coords = renderParameters->projMatrix * coords;
         // std::cout << "clip space coords: " << coords << '\n';
 
         // perform per pixel clipping
@@ -192,6 +193,14 @@ void BezierPatchRenderWidget::DrawLine(const Homogeneous4 &A, const Homogeneous4
 // called every time the widget needs painting
 void BezierPatchRenderWidget::paintGL()
 { // BezierPatchRenderWidget::paintGL()
+
+    // if the projection/ortho matrix checkbox has been toggled:
+    if(renderParameters->triggerResizeCopy)
+    {
+        this->resizeGL(renderParameters->windowWidth, renderParameters->windowHeight);
+
+        renderParameters->triggerResizeCopy = false;
+    }
 
     // TODO:
     // To match the OpenGL widget, refer to "RenderWidget.{h/cpp}.

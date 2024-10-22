@@ -169,10 +169,11 @@ void RenderWidget::paintGL()
     // int j, k;
 
     // if the projection/ortho matrix checkbox has been toggled:
-    if(renderParameters->triggerResize)
+    if(renderParameters->triggerResizeOrig)
     {
         this->resizeGL(renderParameters->windowWidth, renderParameters->windowHeight);
-        renderParameters->triggerResize = false;
+
+        renderParameters->triggerResizeOrig = false;
     }
 
     // set the clear colour and clear the frame buffer

@@ -146,7 +146,8 @@ void RenderController::zTranslateChanged(int value)
     else if (renderParameters->zTranslate > TRANSLATE_MAX)
         renderParameters->zTranslate = TRANSLATE_MAX;
 
-    renderParameters->triggerResize = true;
+    renderParameters->triggerResizeCopy = true;
+    renderParameters->triggerResizeOrig = true;
 
     // reset the interface
     renderWindow->ResetInterface();
@@ -195,7 +196,8 @@ void RenderController::orthoBoxChanged(int state)
     {
         // reset the model's flag
         renderParameters->orthoProjection = (state == Qt::Checked);
-        renderParameters->triggerResize = true;
+        renderParameters->triggerResizeCopy = true;
+        renderParameters->triggerResizeOrig = true;
 
         // reset the interface
         renderWindow->ResetInterface();

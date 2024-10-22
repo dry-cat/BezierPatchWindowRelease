@@ -47,6 +47,7 @@ class RenderParameters
     // two homogeneous matrices for converting to screen space
     Matrix4 rotationMatrix;
     Matrix4 modelviewMatrix;
+    Matrix4 projMatrix;
 
     // have the colour ready for framebuffer placeholders:
     RGBAValue theClearColor;
@@ -62,7 +63,9 @@ class RenderParameters
     bool bezierEnabled;
     // toggle between projections:
     bool orthoProjection;
-    bool triggerResize;
+
+    bool triggerResizeCopy;
+    bool triggerResizeOrig;
 
     // width and height of window, plus initial value
     int windowSize;
@@ -84,13 +87,15 @@ class RenderParameters
         verticesEnabled(true),
         bezierEnabled(false),
         orthoProjection(true),
-        triggerResize(false),
+        triggerResizeCopy(false),
+        triggerResizeOrig(false),
         windowSize(640),
         activeVertex(0)
         { // constructor
         // because we are paranoid, we will initialise the matrices to the identity
         rotationMatrix.SetIdentity();
         modelviewMatrix.SetIdentity();
+        projMatrix.SetIdentity();
         } // constructor
 
     ~RenderParameters(){
