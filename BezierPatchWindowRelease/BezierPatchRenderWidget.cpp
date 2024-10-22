@@ -87,7 +87,6 @@ void BezierPatchRenderWidget::resizeGL(int w, int h)
     float aspectRatio = static_cast<float>(renderParameters->windowWidth) /
                             static_cast<float>(renderParameters->windowHeight);
 
-    // TODO: store this properly and only change it on renderParameters->triggerResize
     // TODO: explain
     auto SetOrthoMatrix = [&projMatrix](float r, float t, float n, float f) {
         projMatrix[0][0] = 1.0f / r;
@@ -128,15 +127,9 @@ void BezierPatchRenderWidget::resizeGL(int w, int h)
 } // BezierPatchRenderWidget::resizeGL()
 
 
-// TODO: This will cause a crash if the window is resized small enough
 void BezierPatchRenderWidget::SetPixel(Homogeneous4 coords, const RGBAValue &color) {
-        // std::cout << "coords start: " << coords << '\n';
-
-        // std::cout << "modelviewMatrix: " << renderParameters->modelviewMatrix;
-
         // convert from model space to view space to clipping space
         coords = renderParameters->projMatrix * renderParameters->modelviewMatrix * coords;
-        // std::cout << "clip space coords: " << coords << '\n';
 
         // perform per pixel clipping
         if (coords.x < -coords.w || coords.x > coords.w ||
@@ -145,12 +138,8 @@ void BezierPatchRenderWidget::SetPixel(Homogeneous4 coords, const RGBAValue &col
             return;
         }
 
-        // std::cout << "coords: " << coords << '\n';
-
         // convert from clipping space to NDCS - perspective division
         Point3 P = coords.Point();
-
-        // std::cout << "P: " << P << '\n';
 
         auto width = static_cast<float>(frameBuffer.width);
         auto height = static_cast<float>(frameBuffer.height);
