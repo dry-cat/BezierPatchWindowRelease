@@ -29,6 +29,8 @@
 
 #define N_THREADS 16
 
+#define PRE_MULTIPLY_PROJ_MATRIX 1
+
 // constructor
 BezierPatchRenderWidget::BezierPatchRenderWidget
         (   
@@ -143,7 +145,9 @@ void BezierPatchRenderWidget::resizeGL(int w, int h)
 
 void BezierPatchRenderWidget::SetPixel(Homogeneous4 coords, const RGBAValue &color) {
         // convert from model space to view space to clipping space
-        // coords = renderParameters->projMatrix * renderParameters->modelviewMatrix * coords;
+#if !PRE_MULTIPLY_PROJ_MATRIX
+        coords = renderParameters->projMatrix * renderParameters->modelviewMatrix * coords;
+#endif // !PRE_MULTIPLY_PROJ_MATRIX
 
         // perform per pixel clipping
         if (coords.x <= -coords.w || coords.x >= coords.w ||
@@ -176,7 +180,9 @@ void BezierPatchRenderWidget::DrawLine(const Homogeneous4 &A, const Homogeneous4
 
         Homogeneous4 P = (alpha*A + beta*B);
 
+#if PRE_MULTIPLY_PROJ_MATRIX
         P = renderParameters->projMatrix * renderParameters->modelviewMatrix * P;
+#endif // PRE_MULTIPLY_PROJ_MATRIX
 
         SetPixel(P, color);
     }
@@ -187,6 +193,12 @@ void BezierPatchRenderWidget::DrawLine(const Homogeneous4 &A, const Homogeneous4
 // called every time the widget needs painting
 void BezierPatchRenderWidget::paintGL()
 { // BezierPatchRenderWidget::paintGL()
+
+    using std::chrono::high_resolution_clock;
+    using std::chrono::duration;
+    using std::chrono::milliseconds;
+
+    auto perFrameTime1 = high_resolution_clock::now();
 
     // if the projection/ortho matrix checkbox has been toggled:
     if(renderParameters->triggerResizeCopy)
@@ -294,8 +306,10 @@ void BezierPatchRenderWidget::paintGL()
             for (float phi = 0.0; phi < 2.f*PI; phi += PI / 30.0)
                 for (float theta = 0.0; theta < 2.f*PI; theta += PI / 30.0)
                     SetPixel(
-                        renderParameters->projMatrix * renderParameters->modelviewMatrix
-                        * Homogeneous4(
+#if PRE_MULTIPLY_PROJ_MATRIX
+                        renderParameters->projMatrix * renderParameters->modelviewMatrix *
+#endif // PRE_MULTIPLY_PROJ_MATRIX
+                        Homogeneous4(
                             vertex.x + radius * cos(phi) * cos(theta),
                             vertex.y + radius * cos(phi) * sin(theta),
                             vertex.z + radius * sin(phi),
@@ -337,16 +351,16 @@ void BezierPatchRenderWidget::paintGL()
     using Homogeneous4x3 = std::vector<Homogeneous4x2>;
     Homogeneous4x3 bezPoints(N_PTS, Homogeneous4x2(N_PTS, Homogeneous4Vector(N_PTS)));
 
-    using std::chrono::high_resolution_clock;
-    using std::chrono::duration;
-    using std::chrono::milliseconds;
-
     // initialise diagonal
     auto it = std::begin(patchControlPoints->vertices);
     for (int j = 0; j < 4; j++) {
         for (int k = 0; k < 4; k++) {
             // std::cout << "i: " << N_PTS - 1 << " j: " << j << " k: " << k << '\n';
+#if PRE_MULTIPLY_PROJ_MATRIX
             bezPoints[N_PTS - 1][j][k] = renderParameters->projMatrix * renderParameters->modelviewMatrix * *it;
+#else // PRE_MULTIPLY_PROJ_MATRIX
+            bezPoints[N_PTS - 1][j][k] = *it;
+#endif // PRE_MULTIPLY_PROJ_MATRIX
             ++it;
         }
     }
@@ -404,10 +418,14 @@ void BezierPatchRenderWidget::paintGL()
     }
     auto t2 = high_resolution_clock::now();
 
-    duration<double, std::milli> ms_double = t2 - t1;
+    auto perFrameTime2 = high_resolution_clock::now();
+
+    duration<double, std::milli> perFrameTime = perFrameTime2 - perFrameTime1;
+    std::cout << "per frame time ms: " << perFrameTime.count() << "ms\n";
     std::cout << "inner loop time ms: " << innerLoopTime.count() << "ms\n";
     std::cout << "set pixel time ms: " << setPixelTime.count() << "ms\n";
-    std::cout << "overall ms: " << ms_double.count() << "ms\n";
+    duration<double, std::milli> ms_double = t2 - t1;
+    std::cout << "overall bezierEnabled ms: " << ms_double.count() << "ms\n";
 
     // Put the custom framebufer on the screen to display the image
     glDrawPixels(frameBuffer.width, frameBuffer.height, GL_RGBA, GL_UNSIGNED_BYTE, frameBuffer.block);
