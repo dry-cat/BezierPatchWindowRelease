@@ -295,7 +295,6 @@ void BezierPatchRenderWidget::paintGL()
     if(renderParameters->netEnabled)
     {// UI control for showing the Bezier control net
         // (control points connected with lines)
-        // TODO: Refactor
         RGBAValue color = {0.0f, 1.0f * 255.0f, 0.0f, 255.0f};
         for (int i = 0; i < 4; i++) {
             auto A = Homogeneous4(patchControlPoints->vertices[i*4+0]);
