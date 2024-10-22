@@ -146,9 +146,9 @@ void BezierPatchRenderWidget::SetPixel(Homogeneous4 coords, const RGBAValue &col
         coords = renderParameters->projMatrix * renderParameters->modelviewMatrix * coords;
 
         // perform per pixel clipping
-        if (coords.x < -coords.w || coords.x > coords.w ||
-            coords.y < -coords.w || coords.y > coords.w ||
-            coords.z < -coords.w || coords.z > coords.w) {
+        if (coords.x <= -coords.w || coords.x >= coords.w ||
+            coords.y <= -coords.w || coords.y >= coords.w ||
+            coords.z <= -coords.w || coords.z >= coords.w) {
             return;
         }
 
