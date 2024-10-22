@@ -58,7 +58,7 @@ RGBAValue::RGBAValue(float Red, float Green, float Blue, float Alpha)
     alpha = static_cast<unsigned char>(Alpha);
     } // constructor
 
-#if DRYCAT // TODO: this is unnecessary - use default copy constructor
+#if JMJ // TODO: this is unnecessary - use default copy constructor
 // copy constructor
 RGBAValue::RGBAValue(const RGBAValue &other)
     :

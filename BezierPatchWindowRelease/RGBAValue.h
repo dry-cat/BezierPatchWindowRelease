@@ -35,7 +35,7 @@ class RGBAValue
     // values outside 0.0-255.0 are clamped
     RGBAValue(float Red, float Green, float Blue, float Alpha);
 
-#if DRYCAT // TODO:
+#if JMJ // TODO:
     // copy constructor
     RGBAValue(const RGBAValue &other);
 #endif // TODO:
