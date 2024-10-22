@@ -402,9 +402,9 @@ void BezierPatchRenderWidget::paintGL()
     auto t2 = high_resolution_clock::now();
 
     duration<double, std::milli> ms_double = t2 - t1;
-    // std::cout << "inner loop time ms: " << innerLoopTime.count() << "ms\n";
-    // std::cout << "set pixel time ms: " << setPixelTime.count() << "ms\n";
-    // std::cout << "overall ms: " << ms_double.count() << "ms\n";
+    std::cout << "inner loop time ms: " << innerLoopTime.count() << "ms\n";
+    std::cout << "set pixel time ms: " << setPixelTime.count() << "ms\n";
+    std::cout << "overall ms: " << ms_double.count() << "ms\n";
 
     // Put the custom framebufer on the screen to display the image
     glDrawPixels(frameBuffer.width, frameBuffer.height, GL_RGBA, GL_UNSIGNED_BYTE, frameBuffer.block);
