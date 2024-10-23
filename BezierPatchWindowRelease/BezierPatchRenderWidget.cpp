@@ -409,8 +409,8 @@ void BezierPatchRenderWidget::paintGL()
         // #pragma omp parallel for collapse(2)
         for (int s = 0; s <= 1000; s++) {
             for (int t = 0; t <= 1000; t++) {
-                float alpha = s / 1000.0f;
-                float beta = t / 1000.0f;
+                const float alpha = s / 1000.0f;
+                const float beta = t / 1000.0f;
 
                 auto calcBezierPointT1 = high_resolution_clock::now();
 
