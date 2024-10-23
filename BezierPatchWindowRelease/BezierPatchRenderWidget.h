@@ -30,6 +30,10 @@
 #include "RenderParameters.h"
 #include "RGBAImage.h"
 
+struct Pixel {
+	long x;
+	long y;
+};
 
 // class for a render widget with arcball linked to an external arcball widget
 class BezierPatchRenderWidget : public QOpenGLWidget
@@ -76,7 +80,7 @@ class BezierPatchRenderWidget : public QOpenGLWidget
 
     private:
 
-	void SetPixel(Homogeneous4 coords, const RGBAValue &color);
+	Pixel CalcPixel(const Homogeneous4 &coords) const;
 	void DrawLine(const Homogeneous4 &A, const Homogeneous4 &B, const RGBAValue &color);
 
     void forceRepaint();

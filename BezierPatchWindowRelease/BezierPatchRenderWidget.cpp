@@ -126,24 +126,12 @@ void BezierPatchRenderWidget::resizeGL(int w, int h)
             SetPerspMatrix(scale, adjustedScale, nearPlane, farPlane);
         }
     }
-
-    auto width = static_cast<float>(frameBuffer.width);
-    auto height = static_cast<float>(frameBuffer.height);
-    // calculate viewport transformation matrix so we can convert from NDCS to DCS
-    float N = 0.0f;
-    float F = 1.0f;
-    float X = 0.0f;
-    float Y = 0.0f;
-    renderParameters->viewportTransformMatrix = { { {
-        { {width / 2.0f, 0.0f,          0.0f,           X + width / 2.0f} },
-        { {0.0f,         height / 2.0f, 0.0f,           Y + height / 2.0f} },
-        { {0.0f,         0.0f,          (F - N) / 2.0f, (F + N) / 2.0f} },
-        { {0.0f,         0.0f,          0.0f,           1.0f} }
-    } } };
 } // BezierPatchRenderWidget::resizeGL()
 
 
-void BezierPatchRenderWidget::SetPixel(Homogeneous4 coords, const RGBAValue &color) {
+Pixel BezierPatchRenderWidget::CalcPixel(const Homogeneous4 &coords) const {
+        // const auto t1 = high_resolution_clock::now();
+
         // convert from model space to view space to clipping space
 #if !PRE_MULTIPLY_PROJ_MATRIX
         coords = renderParameters->projMatrix * renderParameters->modelviewMatrix * coords;
@@ -153,25 +141,33 @@ void BezierPatchRenderWidget::SetPixel(Homogeneous4 coords, const RGBAValue &col
         if (coords.x <= -coords.w || coords.x >= coords.w ||
             coords.y <= -coords.w || coords.y >= coords.w ||
             coords.z <= -coords.w || coords.z >= coords.w) {
-            return;
+            return Pixel{std::numeric_limits<long>::max(), std::numeric_limits<long>::max()};
         }
 
         // convert from clipping space to NDCS - perspective division
-        const Point3 P = coords.Point();
+        auto px = coords.x / coords.w;
+        auto py = coords.y / coords.w;
+        auto pz = coords.z / coords.w;
 
         // convert from NDCS to DCS - viewport transformation
-        coords = renderParameters->viewportTransformMatrix * Homogeneous4(P);
+        const auto halfwidth = frameBuffer.width * 0.5f;
+        const auto halfheight = frameBuffer.height * 0.5f;
+        px = px * halfwidth + halfwidth;
+        py = py * halfheight + halfheight;
+        pz = pz * 0.5f + 0.5f;
 
-        const auto x = static_cast<long>(coords.x);
-        const auto y = static_cast<long>(coords.y);
+        const auto x = static_cast<long>(px);
+        const auto y = static_cast<long>(py);
 
         // in case clipping in homogeneous coordinates didn't catch out of
         // bounds values, due to floating point error, early return here.
         if (x < 0 || y < 0 || x >= frameBuffer.width || y >= frameBuffer.height) {
-            return;
+            return Pixel{std::numeric_limits<long>::max(), std::numeric_limits<long>::max()};
         }
 
-        frameBuffer[y][x] = color;
+        return Pixel{x, y};
+        // const auto setPixelT2 = high_resolution_clock::now();
+        // setPixelTime += setPixelT2 - setPixelT1;
 }
 
 void BezierPatchRenderWidget::DrawLine(const Homogeneous4 &A, const Homogeneous4 &B, const RGBAValue &color) {
@@ -184,7 +180,12 @@ void BezierPatchRenderWidget::DrawLine(const Homogeneous4 &A, const Homogeneous4
         P = renderParameters->projMatrix * renderParameters->modelviewMatrix * P;
 #endif // PRE_MULTIPLY_PROJ_MATRIX
 
-        SetPixel(P, color);
+        const auto pixel = CalcPixel(P);
+        if (pixel.y == std::numeric_limits<long>::max() ||
+            pixel.x == std::numeric_limits<long>::max())
+            continue;
+
+        frameBuffer[pixel.y][pixel.x] = color;
     }
 }
 
@@ -303,9 +304,9 @@ void BezierPatchRenderWidget::paintGL()
 
             Point3 vertex = patchControlPoints->vertices[(i/4)*4+(i%4)];
             double radius = 0.1;
-            for (float phi = 0.0; phi < 2.f*PI; phi += PI / 30.0)
-                for (float theta = 0.0; theta < 2.f*PI; theta += PI / 30.0)
-                    SetPixel(
+            for (float phi = 0.0; phi < 2.f*PI; phi += PI / 30.0) {
+                for (float theta = 0.0; theta < 2.f*PI; theta += PI / 30.0) {
+                    const auto pixel = CalcPixel(
 #if PRE_MULTIPLY_PROJ_MATRIX
                         renderParameters->projMatrix * renderParameters->modelviewMatrix *
 #endif // PRE_MULTIPLY_PROJ_MATRIX
@@ -313,8 +314,15 @@ void BezierPatchRenderWidget::paintGL()
                             vertex.x + radius * cos(phi) * cos(theta),
                             vertex.y + radius * cos(phi) * sin(theta),
                             vertex.z + radius * sin(phi),
-                            1.0f),
-                        color);
+                            1.0f));
+
+                    if (pixel.y == std::numeric_limits<long>::max() ||
+                        pixel.x == std::numeric_limits<long>::max())
+                        continue;
+
+                    frameBuffer[pixel.y][pixel.x] = color;
+                }
+            }
 
             // consider ways to make the rendered points bigger than just 1x1 pixel on the screen
         }
@@ -365,11 +373,12 @@ void BezierPatchRenderWidget::paintGL()
     }
 
     auto t1 = high_resolution_clock::now();
-
-    duration<double, std::milli> setPixelTime{};
+    // duration<double, std::milli> setPixelTime{};
     duration<double, std::milli> calcBezierPointTime{};
 
-    auto CalcBezierOrigin = [&pts](float s, float t) {
+    auto CalcBezierOrigin = [&pts, &calcBezierPointTime](float s, float t) {
+        auto calcBezierPointT1 = high_resolution_clock::now();
+
         const auto sPow2 = s*s;
         const auto sPow3 = s*sPow2;
         const auto complementS = 1 - s;
@@ -401,6 +410,9 @@ void BezierPatchRenderWidget::paintGL()
             complementTPow3*pts[3][0] + threeT_ComplementTPow2*pts[3][1]
             + threeTPow2_ComplementT*pts[3][2] + tPow3*pts[3][3]);
 
+        auto calcBezierPointT2 = high_resolution_clock::now();
+        calcBezierPointTime += calcBezierPointT2 - calcBezierPointT1;
+
         return l1 + l2 + l3 + l4;
     };
 
@@ -413,22 +425,18 @@ void BezierPatchRenderWidget::paintGL()
                 const float alpha = s / 1000.0f;
                 const float beta = t / 1000.0f;
 
-                auto calcBezierPointT1 = high_resolution_clock::now();
-
-                const auto point = CalcBezierOrigin(alpha, beta);
-
-                auto calcBezierPointT2 = high_resolution_clock::now();
-                calcBezierPointTime += calcBezierPointT2 - calcBezierPointT1;
-
-                auto setPixelT1 = high_resolution_clock::now();
+                // auto setPixelT1 = high_resolution_clock::now();
 
                 // set the pixel for this parameter value using s, t for colour
                 const RGBAValue color = {alpha*255.0f, 0.5f*255.0f, beta*255.0f, 255.0f};
                 // std::cout << point << '\n';
-                SetPixel(point, color);
+                // SetPixel(CalcBezierOrigin(alpha, beta), color);
+                auto pixel = CalcPixel(CalcBezierOrigin(alpha, beta));
+                if (pixel.y == std::numeric_limits<long>::max() ||
+                    pixel.x == std::numeric_limits<long>::max())
+                    continue;
+                frameBuffer[pixel.y][pixel.x] = color;
 
-                auto setPixelT2 = high_resolution_clock::now();
-                setPixelTime += setPixelT2 - setPixelT1;
             }
         }
     }
@@ -439,7 +447,7 @@ void BezierPatchRenderWidget::paintGL()
     duration<double, std::milli> perFrameTime = perFrameTime2 - perFrameTime1;
     std::cout << "per frame time ms: " << perFrameTime.count() << "ms\n";
     std::cout << "calc bezier point time ms: " << calcBezierPointTime.count() << "ms\n";
-    std::cout << "set pixel time ms: " << setPixelTime.count() << "ms\n";
+    // std::cout << "set pixel time ms: " << setPixelTime.count() << "ms\n";
     duration<double, std::milli> ms_double = t2 - t1;
     std::cout << "overall bezierEnabled ms: " << ms_double.count() << "ms\n";
 
