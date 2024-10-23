@@ -375,43 +375,41 @@ void BezierPatchRenderWidget::paintGL()
             for (int ss = 0; ss <= 1000; ss++) {
                 float s = static_cast<float>(ss) * 0.001f;
 
-                // {
-                    // #pragma omp parallel for
-                    for (int tt = 0; tt <= 1000; tt++) {
-                        float t = static_cast<float>(tt) * 0.001f;
-                        auto innerLoopT1 = high_resolution_clock::now();
+                for (int tt = 0; tt <= 1000; tt++) {
+                    float t = static_cast<float>(tt) * 0.001f;
+                    auto innerLoopT1 = high_resolution_clock::now();
 
-                for (int i = N_PTS - 2; i >= 0; i--) {
-                    for (int k = 0; k <= i; k++) {
-                        for (int j = 0; j <= i; j++) {
-                                    // std::cout << "i: " << i << " j: " << j << " k: " << k << '\n';
-                            bezPoints[i][j][k] = (1 - s)*(1 - t)*bezPoints[i+1][j][k]
-                                                    + s*(1 - t)*bezPoints[i+1][j+1][k]
-                                                    + (1 - s)*t*bezPoints[i+1][j][k+1]
-                                                    + s*t*bezPoints[i+1][j+1][k+1];
-                            // std::cout << bezPoints[i][j][k] << '\n';
+                    for (int i = N_PTS - 2; i >= 0; i--) {
+                        for (int k = 0; k <= i; k++) {
+                            for (int j = 0; j <= i; j++) {
+                                        // std::cout << "i: " << i << " j: " << j << " k: " << k << '\n';
+                                bezPoints[i][j][k] = (1 - s)*(1 - t)*bezPoints[i+1][j][k]
+                                                        + s*(1 - t)*bezPoints[i+1][j+1][k]
+                                                        + (1 - s)*t*bezPoints[i+1][j][k+1]
+                                                        + s*t*bezPoints[i+1][j+1][k+1];
+                                // std::cout << bezPoints[i][j][k] << '\n';
+                            }
                         }
+                    }
+
+                    auto innerLoopT2 = high_resolution_clock::now();
+                    innerLoopTime += innerLoopT2 - innerLoopT1;
+
+                    // #pragma omp parallel
+                    {
+                        auto setPixelT1 = high_resolution_clock::now();
+
+                        // set the pixel for this parameter value using s, t for colour
+                        RGBAValue color = {s*255.0f, 0.5f*255.0f, t*255.0f, 255.0f};
+                        // std::cout << vertex << '\n';
+                        // #pragma omp critical
+                        SetPixel(bezPoints[0][0][0], color);
+
+                        auto setPixelT2 = high_resolution_clock::now();
+                        setPixelTime += setPixelT2 - setPixelT1;
+
                     }
                 }
-
-                        auto innerLoopT2 = high_resolution_clock::now();
-                        innerLoopTime += innerLoopT2 - innerLoopT1;
-
-                        // #pragma omp parallel
-                        {
-                            auto setPixelT1 = high_resolution_clock::now();
-
-                // set the pixel for this parameter value using s, t for colour
-                RGBAValue color = {s*255.0f, 0.5f*255.0f, t*255.0f, 255.0f};
-                // std::cout << vertex << '\n';
-                            // #pragma omp critical
-                            SetPixel(bezPoints[0][0][0], color);
-
-                            auto setPixelT2 = high_resolution_clock::now();
-                            setPixelTime += setPixelT2 - setPixelT1;
-
-                        }
-                    }
 
                 // }
         }
