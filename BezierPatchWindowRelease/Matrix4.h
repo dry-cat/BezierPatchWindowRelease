@@ -62,24 +62,103 @@ class Matrix4
 
     // scalar operations
     // multiplication operator (no division operator)
-    Matrix4 operator *(float factor) const;
+    Matrix4 operator*(float factor) const
+    { // operator *()
+        // start with a zero matrix
+        Matrix4 returnMatrix;
+
+        // multiply by the factor
+        for (int row = 0; row < 4; row++)
+            for (int col = 0; col < 4; col++)
+                returnMatrix[row][col] = coordinates[row][col] * factor;
+
+        // and return it
+        return returnMatrix;
+    } // operator *()
 
     // vector operations on homogeneous coordinates
     // multiplication is the only operator we use
-    Homogeneous4 operator *(const Homogeneous4 &vector) const;
+    Homogeneous4 operator*(const Homogeneous4 &vector) const
+    { // operator *()
+        // get a zero-initialised vector
+        Homogeneous4 productVector;
+
+        // loop adding products
+        for (int row = 0; row < 4; row++)
+            for (int k = 0; k < 4; k++)
+                productVector[row] += coordinates[row][k] * vector[k];
+
+        // return the result
+        return productVector;
+    } // operator *()
 
     // and on Cartesian coordinates
-    Point3 operator *(const Point3 &vector) const;
+    Point3 operator*(const Point3 &vector) const
+    { // cartesian multiplication
+        // convert to Homogeneous coords and multiply
+        Homogeneous4 productVector = (*this) * Homogeneous4(vector);
+
+        // then divide back through
+        return productVector.Point();
+    } // cartesian multiplication
+
     // and on vectors
-    Vector3 operator *(const Vector3 &vector) const;
+    Vector3 operator*(const Vector3 &vector) const
+    { // matrix-vector multiplication
+        // convert to Homogeneous coords and multiply
+        Homogeneous4 productVector = (*this) * Homogeneous4(vector);
+
+        // drop w (assumed to be 0)
+        return productVector.Vector();
+    } // matrix-vector multiplication
 
     // matrix operations
     // addition operator
-    Matrix4 operator +(const Matrix4 &other) const;
+    Matrix4 operator+(const Matrix4 &other) const
+    { // operator +()
+        // start with a zero matrix
+        Matrix4 sumMatrix;
+
+        // loop adding products
+        for (int row = 0; row < 4; row++)
+            for (int col = 0; col < 4; col++)
+                sumMatrix[row][col] = coordinates[row][col] + other[row][col];
+
+        // return the result
+        return sumMatrix;
+    } // operator +()
+
     // subtraction operator
-    Matrix4 operator -(const Matrix4 &other) const;
+    Matrix4 operator-(const Matrix4 &other) const
+    { // operator -()
+        // start with a zero matrix
+        Matrix4 differenceMatrix;
+
+        // loop subtracting products
+        for (int row = 0; row < 4; row++)
+            for (int col = 0; col < 4; col++)
+                differenceMatrix[row][col] = coordinates[row][col] - other[row][col];
+
+        // return the result
+        return differenceMatrix;
+    } // operator -()
+
     // multiplication operator
-    Matrix4 operator *(const Matrix4 &other) const; 
+    Matrix4 operator*(const Matrix4 &other) const
+    { // operator *()
+        // start with a zero matrix
+        Matrix4 productMatrix;
+        // This function is provided to give the correct result ...
+        // ... on the OpenGL render widget in the app UI
+        // loop, adding products
+        for (int row = 0; row < 4; row++)
+            for (int col = 0; col < 4; col++)
+                for (int entry = 0; entry < 4; entry++)
+                    productMatrix.coordinates[row][col] += coordinates[row][entry] * other.coordinates[entry][col];
+
+        // return the result
+        return productMatrix;
+    } // operator *()
     
     // matrix transpose
     Matrix4 transpose() const;
@@ -99,7 +178,11 @@ class Matrix4
 
 // scalar operations
 // additional scalar multiplication operator
-Matrix4 operator *(float factor, const Matrix4 &matrix);
+inline Matrix4 operator*(float factor, const Matrix4 &matrix)
+{ // operator *()
+    // since this is commutative, call the other version
+    return matrix * factor;
+} // operator *()
 
 // stream input
 std::istream & operator >> (std::istream &inStream, Matrix4 &value);

@@ -157,13 +157,13 @@ void BezierPatchRenderWidget::SetPixel(Homogeneous4 coords, const RGBAValue &col
         }
 
         // convert from clipping space to NDCS - perspective division
-        Point3 P = coords.Point();
+        const Point3 P = coords.Point();
 
         // convert from NDCS to DCS - viewport transformation
         coords = renderParameters->viewportTransformMatrix * Homogeneous4(P);
 
-        auto x = static_cast<long>(coords.x);
-        auto y = static_cast<long>(coords.y);
+        const auto x = static_cast<long>(coords.x);
+        const auto y = static_cast<long>(coords.y);
 
         // in case clipping in homogeneous coordinates didn't catch out of
         // bounds values, due to floating point error, early return here.
@@ -346,20 +346,33 @@ void BezierPatchRenderWidget::paintGL()
     }// UI control for showing the Bezier control net
 
     static constexpr int N_PTS = 4;
-    using Homogeneous4Vector = std::vector<Homogeneous4>;
-    using Homogeneous4x2 = std::vector<Homogeneous4Vector>;
-    using Homogeneous4x3 = std::vector<Homogeneous4x2>;
-    Homogeneous4x3 bezPoints(N_PTS, Homogeneous4x2(N_PTS, Homogeneous4Vector(N_PTS)));
+    using Homogeneous4Vector = std::array<Homogeneous4, N_PTS>;
+    using Homogeneous4x2 = std::array<Homogeneous4Vector, N_PTS>;
+    using Homogeneous4x3 = std::array<Homogeneous4x2, N_PTS>;
 
     // initialise diagonal
+//     auto it = std::begin(patchControlPoints->vertices);
+//     for (int j = 0; j < 4; j++) {
+//         for (int k = 0; k < 4; k++) {
+//             // std::cout << "i: " << N_PTS - 1 << " j: " << j << " k: " << k << '\n';
+// #if PRE_MULTIPLY_PROJ_MATRIX
+//             bezPoints[N_PTS - 1][j][k] = renderParameters->projMatrix * renderParameters->modelviewMatrix * *it;
+// #else // PRE_MULTIPLY_PROJ_MATRIX
+//             bezPoints[N_PTS - 1][j][k] = *it;
+// #endif // PRE_MULTIPLY_PROJ_MATRIX
+//             ++it;
+//         }
+//     }
+
+    Homogeneous4x2 bezPoints3{};
     auto it = std::begin(patchControlPoints->vertices);
     for (int j = 0; j < 4; j++) {
         for (int k = 0; k < 4; k++) {
             // std::cout << "i: " << N_PTS - 1 << " j: " << j << " k: " << k << '\n';
 #if PRE_MULTIPLY_PROJ_MATRIX
-            bezPoints[N_PTS - 1][j][k] = renderParameters->projMatrix * renderParameters->modelviewMatrix * *it;
+            bezPoints3[j][k] = renderParameters->projMatrix * renderParameters->modelviewMatrix * *it;
 #else // PRE_MULTIPLY_PROJ_MATRIX
-            bezPoints[N_PTS - 1][j][k] = *it;
+            bezPoints3[j][k] = *it;
 #endif // PRE_MULTIPLY_PROJ_MATRIX
             ++it;
         }
@@ -368,50 +381,83 @@ void BezierPatchRenderWidget::paintGL()
     auto t1 = high_resolution_clock::now();
 
     duration<double, std::milli> setPixelTime{};
-    duration<double, std::milli> innerLoopTime{};
+    duration<double, std::milli> calcBezierPointTime{};
+
+    Homogeneous4x2 bezPoints2{};
+    Homogeneous4x2 bezPoints1{};
+
+    auto CalcBezPoint = [](Homogeneous4x2 &bezPointsTarget,
+                                    const Homogeneous4x2 bezPointsSource,
+                                    float s, float t, int i, int j, int k) {
+        bezPointsTarget[j][k] = (1 - s)*(1 - t)*bezPointsSource[j][k]
+                                + s*(1 - t)*bezPointsSource[j+1][k]
+                                + (1 - s)*t*bezPointsSource[j][k+1]
+                                + s*t*bezPointsSource[j+1][k+1];
+    };
+
+    auto CalcBezierOrigin = [&bezPoints3, &bezPoints2, &bezPoints1, &CalcBezPoint](float s, float t) {
+        // i: 2 j: 0 k: 0
+        // i: 2 j: 1 k: 0
+        // i: 2 j: 2 k: 0
+        // i: 2 j: 0 k: 1
+        // i: 2 j: 1 k: 1
+        // i: 2 j: 2 k: 1
+        // i: 2 j: 0 k: 2
+        // i: 2 j: 1 k: 2
+        // i: 2 j: 2 k: 2
+        // i: 1 j: 0 k: 0
+        // i: 1 j: 1 k: 0
+        // i: 1 j: 0 k: 1
+        // i: 1 j: 1 k: 1
+        // i: 0 j: 0 k: 0
+        CalcBezPoint(bezPoints2, bezPoints3, s, t, 2, 0, 0);
+        CalcBezPoint(bezPoints2, bezPoints3, s, t, 2, 1, 0);
+        CalcBezPoint(bezPoints2, bezPoints3, s, t, 2, 2, 0);
+        CalcBezPoint(bezPoints2, bezPoints3, s, t, 2, 0, 1);
+        CalcBezPoint(bezPoints2, bezPoints3, s, t, 2, 1, 1);
+        CalcBezPoint(bezPoints2, bezPoints3, s, t, 2, 2, 1);
+        CalcBezPoint(bezPoints2, bezPoints3, s, t, 2, 0, 2);
+        CalcBezPoint(bezPoints2, bezPoints3, s, t, 2, 1, 2);
+        CalcBezPoint(bezPoints2, bezPoints3, s, t, 2, 2, 2);
+
+        CalcBezPoint(bezPoints1, bezPoints2, s, t, 1, 0, 0);
+        CalcBezPoint(bezPoints1, bezPoints2, s, t, 1, 1, 0);
+        CalcBezPoint(bezPoints1, bezPoints2, s, t, 1, 0, 1);
+        CalcBezPoint(bezPoints1, bezPoints2, s, t, 1, 1, 1);
+
+        size_t j = 0;
+        size_t k = 0;
+        return (1 - s)*(1 - t)*bezPoints1[j][k]
+                                + s*(1 - t)*bezPoints1[j+1][k]
+                                + (1 - s)*t*bezPoints1[j][k+1]
+                                + s*t*bezPoints1[j+1][k+1];
+    };
 
     if(renderParameters->bezierEnabled)
     {// UI control for showing the Bezier curve
-            for (int ss = 0; ss <= 1000; ss++) {
-                float s = static_cast<float>(ss) * 0.001f;
+        #pragma omp parallel for collapse(2)
+        for (int s = 0; s <= 1000; s++) {
+            for (int t = 0; t <= 1000; t++) {
+                float alpha = s / 1000.0f;
+                float beta = t / 1000.0f;
 
-                for (int tt = 0; tt <= 1000; tt++) {
-                    float t = static_cast<float>(tt) * 0.001f;
-                    auto innerLoopT1 = high_resolution_clock::now();
+                auto calcBezierPointT1 = high_resolution_clock::now();
 
-                    for (int i = N_PTS - 2; i >= 0; i--) {
-                        for (int k = 0; k <= i; k++) {
-                            for (int j = 0; j <= i; j++) {
-                                        // std::cout << "i: " << i << " j: " << j << " k: " << k << '\n';
-                                bezPoints[i][j][k] = (1 - s)*(1 - t)*bezPoints[i+1][j][k]
-                                                        + s*(1 - t)*bezPoints[i+1][j+1][k]
-                                                        + (1 - s)*t*bezPoints[i+1][j][k+1]
-                                                        + s*t*bezPoints[i+1][j+1][k+1];
-                                // std::cout << bezPoints[i][j][k] << '\n';
-                            }
-                        }
-                    }
+                const auto point = CalcBezierOrigin(alpha, beta);
 
-                    auto innerLoopT2 = high_resolution_clock::now();
-                    innerLoopTime += innerLoopT2 - innerLoopT1;
+                auto calcBezierPointT2 = high_resolution_clock::now();
+                calcBezierPointTime += calcBezierPointT2 - calcBezierPointT1;
 
-                    // #pragma omp parallel
-                    {
-                        auto setPixelT1 = high_resolution_clock::now();
+                auto setPixelT1 = high_resolution_clock::now();
 
-                        // set the pixel for this parameter value using s, t for colour
-                        RGBAValue color = {s*255.0f, 0.5f*255.0f, t*255.0f, 255.0f};
-                        // std::cout << vertex << '\n';
-                        // #pragma omp critical
-                        SetPixel(bezPoints[0][0][0], color);
+                // set the pixel for this parameter value using s, t for colour
+                const RGBAValue color = {alpha*255.0f, 0.5f*255.0f, beta*255.0f, 255.0f};
+                // std::cout << vertex << '\n';
+                SetPixel(point, color);
 
-                        auto setPixelT2 = high_resolution_clock::now();
-                        setPixelTime += setPixelT2 - setPixelT1;
-
-                    }
-                }
-
-                // }
+                auto setPixelT2 = high_resolution_clock::now();
+                setPixelTime += setPixelT2 - setPixelT1;
+            }
         }
     }
     auto t2 = high_resolution_clock::now();
@@ -420,7 +466,7 @@ void BezierPatchRenderWidget::paintGL()
 
     duration<double, std::milli> perFrameTime = perFrameTime2 - perFrameTime1;
     std::cout << "per frame time ms: " << perFrameTime.count() << "ms\n";
-    std::cout << "inner loop time ms: " << innerLoopTime.count() << "ms\n";
+    std::cout << "calc bezier point time ms: " << calcBezierPointTime.count() << "ms\n";
     std::cout << "set pixel time ms: " << setPixelTime.count() << "ms\n";
     duration<double, std::milli> ms_double = t2 - t1;
     std::cout << "overall bezierEnabled ms: " << ms_double.count() << "ms\n";
