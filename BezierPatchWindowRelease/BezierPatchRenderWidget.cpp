@@ -348,31 +348,17 @@ void BezierPatchRenderWidget::paintGL()
     static constexpr int N_PTS = 4;
     using Homogeneous4Vector = std::array<Homogeneous4, N_PTS>;
     using Homogeneous4x2 = std::array<Homogeneous4Vector, N_PTS>;
-    using Homogeneous4x3 = std::array<Homogeneous4x2, N_PTS>;
 
     // initialise diagonal
-//     auto it = std::begin(patchControlPoints->vertices);
-//     for (int j = 0; j < 4; j++) {
-//         for (int k = 0; k < 4; k++) {
-//             // std::cout << "i: " << N_PTS - 1 << " j: " << j << " k: " << k << '\n';
-// #if PRE_MULTIPLY_PROJ_MATRIX
-//             bezPoints[N_PTS - 1][j][k] = renderParameters->projMatrix * renderParameters->modelviewMatrix * *it;
-// #else // PRE_MULTIPLY_PROJ_MATRIX
-//             bezPoints[N_PTS - 1][j][k] = *it;
-// #endif // PRE_MULTIPLY_PROJ_MATRIX
-//             ++it;
-//         }
-//     }
-
-    Homogeneous4x2 bezPoints3{};
+    Homogeneous4x2 pts{};
     auto it = std::begin(patchControlPoints->vertices);
     for (int j = 0; j < 4; j++) {
         for (int k = 0; k < 4; k++) {
             // std::cout << "i: " << N_PTS - 1 << " j: " << j << " k: " << k << '\n';
 #if PRE_MULTIPLY_PROJ_MATRIX
-            bezPoints3[j][k] = renderParameters->projMatrix * renderParameters->modelviewMatrix * *it;
+            pts[j][k] = renderParameters->projMatrix * renderParameters->modelviewMatrix * *it;
 #else // PRE_MULTIPLY_PROJ_MATRIX
-            bezPoints3[j][k] = *it;
+            pts[j][k] = *it;
 #endif // PRE_MULTIPLY_PROJ_MATRIX
             ++it;
         }
@@ -383,59 +369,44 @@ void BezierPatchRenderWidget::paintGL()
     duration<double, std::milli> setPixelTime{};
     duration<double, std::milli> calcBezierPointTime{};
 
-    Homogeneous4x2 bezPoints2{};
-    Homogeneous4x2 bezPoints1{};
+    auto CalcBezierOrigin = [&pts](float s, float t) {
+        const auto sPow2 = s*s;
+        const auto sPow3 = s*sPow2;
+        const auto complementS = 1 - s;
+        const auto complementSPow2 = complementS*complementS;
+        const auto complementSPow3 = complementS*complementSPow2;
 
-    auto CalcBezPoint = [](Homogeneous4x2 &bezPointsTarget,
-                                    const Homogeneous4x2 bezPointsSource,
-                                    float s, float t, int i, int j, int k) {
-        bezPointsTarget[j][k] = (1 - s)*(1 - t)*bezPointsSource[j][k]
-                                + s*(1 - t)*bezPointsSource[j+1][k]
-                                + (1 - s)*t*bezPointsSource[j][k+1]
-                                + s*t*bezPointsSource[j+1][k+1];
-    };
+        const auto tPow2 = t*t;
+        const auto tPow3 = t*tPow2;
+        const auto complementT = 1 - t;
+        const auto complementTPow2 = complementT*complementT;
+        const auto complementTPow3 = complementT*complementTPow2;
 
-    auto CalcBezierOrigin = [&bezPoints3, &bezPoints2, &bezPoints1, &CalcBezPoint](float s, float t) {
-        // i: 2 j: 0 k: 0
-        // i: 2 j: 1 k: 0
-        // i: 2 j: 2 k: 0
-        // i: 2 j: 0 k: 1
-        // i: 2 j: 1 k: 1
-        // i: 2 j: 2 k: 1
-        // i: 2 j: 0 k: 2
-        // i: 2 j: 1 k: 2
-        // i: 2 j: 2 k: 2
-        // i: 1 j: 0 k: 0
-        // i: 1 j: 1 k: 0
-        // i: 1 j: 0 k: 1
-        // i: 1 j: 1 k: 1
-        // i: 0 j: 0 k: 0
-        CalcBezPoint(bezPoints2, bezPoints3, s, t, 2, 0, 0);
-        CalcBezPoint(bezPoints2, bezPoints3, s, t, 2, 1, 0);
-        CalcBezPoint(bezPoints2, bezPoints3, s, t, 2, 2, 0);
-        CalcBezPoint(bezPoints2, bezPoints3, s, t, 2, 0, 1);
-        CalcBezPoint(bezPoints2, bezPoints3, s, t, 2, 1, 1);
-        CalcBezPoint(bezPoints2, bezPoints3, s, t, 2, 2, 1);
-        CalcBezPoint(bezPoints2, bezPoints3, s, t, 2, 0, 2);
-        CalcBezPoint(bezPoints2, bezPoints3, s, t, 2, 1, 2);
-        CalcBezPoint(bezPoints2, bezPoints3, s, t, 2, 2, 2);
+        const auto threeT_ComplementTPow2 = 3*t*complementTPow2;
+        const auto threeTPow2_ComplementT = 3*tPow2*complementT;
 
-        CalcBezPoint(bezPoints1, bezPoints2, s, t, 1, 0, 0);
-        CalcBezPoint(bezPoints1, bezPoints2, s, t, 1, 1, 0);
-        CalcBezPoint(bezPoints1, bezPoints2, s, t, 1, 0, 1);
-        CalcBezPoint(bezPoints1, bezPoints2, s, t, 1, 1, 1);
+        const auto l1 = complementSPow3 * (
+            complementTPow3*pts[0][0] + threeT_ComplementTPow2*pts[0][1]
+            + threeTPow2_ComplementT*pts[0][2] + tPow3*pts[0][3]);
 
-        size_t j = 0;
-        size_t k = 0;
-        return (1 - s)*(1 - t)*bezPoints1[j][k]
-                                + s*(1 - t)*bezPoints1[j+1][k]
-                                + (1 - s)*t*bezPoints1[j][k+1]
-                                + s*t*bezPoints1[j+1][k+1];
+        const auto l2 = 3*s*complementSPow2 * (
+            complementTPow3*pts[1][0] + threeT_ComplementTPow2*pts[1][1]
+            + threeTPow2_ComplementT*pts[1][2] + tPow3*pts[1][3]);
+
+        const auto l3 = 3*sPow2*complementS * (
+            complementTPow3*pts[2][0] + threeT_ComplementTPow2*pts[2][1]
+            + threeTPow2_ComplementT*pts[2][2] + tPow3*pts[2][3]);
+
+        const auto l4 = sPow3 * (
+            complementTPow3*pts[3][0] + threeT_ComplementTPow2*pts[3][1]
+            + threeTPow2_ComplementT*pts[3][2] + tPow3*pts[3][3]);
+
+        return l1 + l2 + l3 + l4;
     };
 
     if(renderParameters->bezierEnabled)
     {// UI control for showing the Bezier curve
-        #pragma omp parallel for collapse(2)
+        // #pragma omp parallel for collapse(2)
         for (int s = 0; s <= 1000; s++) {
             for (int t = 0; t <= 1000; t++) {
                 float alpha = s / 1000.0f;
@@ -452,7 +423,7 @@ void BezierPatchRenderWidget::paintGL()
 
                 // set the pixel for this parameter value using s, t for colour
                 const RGBAValue color = {alpha*255.0f, 0.5f*255.0f, beta*255.0f, 255.0f};
-                // std::cout << vertex << '\n';
+                // std::cout << point << '\n';
                 SetPixel(point, color);
 
                 auto setPixelT2 = high_resolution_clock::now();
