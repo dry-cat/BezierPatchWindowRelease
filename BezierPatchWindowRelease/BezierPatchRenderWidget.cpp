@@ -406,7 +406,8 @@ void BezierPatchRenderWidget::paintGL()
 
     if(renderParameters->bezierEnabled)
     {// UI control for showing the Bezier curve
-        // #pragma omp parallel for collapse(2)
+        omp_set_num_threads(N_THREADS);
+        #pragma omp parallel for collapse(2)
         for (int s = 0; s <= 1000; s++) {
             for (int t = 0; t <= 1000; t++) {
                 const float alpha = s / 1000.0f;
