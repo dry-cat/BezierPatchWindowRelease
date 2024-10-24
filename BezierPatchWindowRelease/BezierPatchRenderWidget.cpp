@@ -129,7 +129,7 @@ void BezierPatchRenderWidget::resizeGL(int w, int h)
 } // BezierPatchRenderWidget::resizeGL()
 
 
-Pixel BezierPatchRenderWidget::CalcPixel(const Homogeneous4 &coords) const {
+void BezierPatchRenderWidget::SetPixel(const Homogeneous4 &coords, const RGBAValue& color) {
         // const auto t1 = high_resolution_clock::now();
 
         // convert from model space to view space to clipping space
@@ -141,7 +141,7 @@ Pixel BezierPatchRenderWidget::CalcPixel(const Homogeneous4 &coords) const {
         if (coords.x <= -coords.w || coords.x >= coords.w ||
             coords.y <= -coords.w || coords.y >= coords.w ||
             coords.z <= -coords.w || coords.z >= coords.w) {
-            return Pixel{std::numeric_limits<long>::max(), std::numeric_limits<long>::max()};
+            return;
         }
 
         // convert from clipping space to NDCS - perspective division
@@ -162,10 +162,10 @@ Pixel BezierPatchRenderWidget::CalcPixel(const Homogeneous4 &coords) const {
         // in case clipping in homogeneous coordinates didn't catch out of
         // bounds values, due to floating point error, early return here.
         if (x < 0 || y < 0 || x >= frameBuffer.width || y >= frameBuffer.height) {
-            return Pixel{std::numeric_limits<long>::max(), std::numeric_limits<long>::max()};
+            return;
         }
 
-        return Pixel{x, y};
+        frameBuffer[y][x] = color;
         // const auto setPixelT2 = high_resolution_clock::now();
         // setPixelTime += setPixelT2 - setPixelT1;
 }
@@ -180,16 +180,52 @@ void BezierPatchRenderWidget::DrawLine(const Homogeneous4 &A, const Homogeneous4
         P = renderParameters->projMatrix * renderParameters->modelviewMatrix * P;
 #endif // PRE_MULTIPLY_PROJ_MATRIX
 
-        const auto pixel = CalcPixel(P);
-        if (pixel.y == std::numeric_limits<long>::max() ||
-            pixel.x == std::numeric_limits<long>::max())
-            continue;
-
-        frameBuffer[pixel.y][pixel.x] = color;
+        SetPixel(P, color);
     }
 }
 
+Homogeneous4 BezierPatchRenderWidget::CalcCubicBezierCurvePoint(
+    float scalar,
+    float coeffA, float coeffB, float coeffC, float coeffD,
+    const Homogeneous4 &pointA, const Homogeneous4 &pointB,
+    const Homogeneous4 &pointC, const Homogeneous4 &pointD) {
+    return scalar * (coeffA*pointA + coeffB*pointB + coeffC*pointC + coeffD*pointD);
+}
 
+Homogeneous4 BezierPatchRenderWidget::CalcBezierOrigin(
+    float s, float t, const Homogeneous4x2 &pts) {
+    const auto sPow2 = s*s;
+    const auto sPow3 = s*sPow2;
+    const auto complementS = 1 - s;
+    const auto complementSPow2 = complementS*complementS;
+    const auto complementSPow3 = complementS*complementSPow2;
+
+    const auto tPow2 = t*t;
+    const auto tPow3 = t*tPow2;
+    const auto complementT = 1 - t;
+    const auto complementTPow2 = complementT*complementT;
+    const auto complementTPow3 = complementT*complementTPow2;
+
+    const auto threeT_ComplementTPow2 = 3*t*complementTPow2;
+    const auto threeTPow2_ComplementT = 3*tPow2*complementT;
+
+    return CalcCubicBezierCurvePoint(complementSPow3,
+                complementTPow3, threeT_ComplementTPow2,
+                threeTPow2_ComplementT, tPow3,
+                pts[0][0], pts[0][1], pts[0][2], pts[0][3])
+            + CalcCubicBezierCurvePoint(3*s*complementSPow2,
+                complementTPow3, threeT_ComplementTPow2,
+                threeTPow2_ComplementT, tPow3,
+                pts[1][0], pts[1][1], pts[1][2], pts[1][3])
+            + CalcCubicBezierCurvePoint(3*sPow2*complementS,
+                complementTPow3, threeT_ComplementTPow2,
+                threeTPow2_ComplementT, tPow3,
+                pts[2][0], pts[2][1], pts[2][2], pts[2][3])
+            + CalcCubicBezierCurvePoint(sPow3,
+                complementTPow3, threeT_ComplementTPow2,
+                threeTPow2_ComplementT, tPow3,
+                pts[3][0], pts[3][1], pts[3][2], pts[3][3]);
+};
 
 // called every time the widget needs painting
 void BezierPatchRenderWidget::paintGL()
@@ -306,7 +342,7 @@ void BezierPatchRenderWidget::paintGL()
             double radius = 0.1;
             for (float phi = 0.0; phi < 2.f*PI; phi += PI / 30.0) {
                 for (float theta = 0.0; theta < 2.f*PI; theta += PI / 30.0) {
-                    const auto pixel = CalcPixel(
+                    SetPixel(
 #if PRE_MULTIPLY_PROJ_MATRIX
                         renderParameters->projMatrix * renderParameters->modelviewMatrix *
 #endif // PRE_MULTIPLY_PROJ_MATRIX
@@ -314,13 +350,7 @@ void BezierPatchRenderWidget::paintGL()
                             vertex.x + radius * cos(phi) * cos(theta),
                             vertex.y + radius * cos(phi) * sin(theta),
                             vertex.z + radius * sin(phi),
-                            1.0f));
-
-                    if (pixel.y == std::numeric_limits<long>::max() ||
-                        pixel.x == std::numeric_limits<long>::max())
-                        continue;
-
-                    frameBuffer[pixel.y][pixel.x] = color;
+                            1.0f), color);
                 }
             }
 
@@ -353,10 +383,6 @@ void BezierPatchRenderWidget::paintGL()
         }
     }// UI control for showing the Bezier control net
 
-    static constexpr int N_PTS = 4;
-    using Homogeneous4Vector = std::array<Homogeneous4, N_PTS>;
-    using Homogeneous4x2 = std::array<Homogeneous4Vector, N_PTS>;
-
     // initialise diagonal
     Homogeneous4x2 pts{};
     auto it = std::begin(patchControlPoints->vertices);
@@ -376,46 +402,6 @@ void BezierPatchRenderWidget::paintGL()
     // duration<double, std::milli> setPixelTime{};
     duration<double, std::milli> calcBezierPointTime{};
 
-    auto CalcBezierOrigin = [&pts, &calcBezierPointTime](float s, float t) {
-        auto calcBezierPointT1 = high_resolution_clock::now();
-
-        const auto sPow2 = s*s;
-        const auto sPow3 = s*sPow2;
-        const auto complementS = 1 - s;
-        const auto complementSPow2 = complementS*complementS;
-        const auto complementSPow3 = complementS*complementSPow2;
-
-        const auto tPow2 = t*t;
-        const auto tPow3 = t*tPow2;
-        const auto complementT = 1 - t;
-        const auto complementTPow2 = complementT*complementT;
-        const auto complementTPow3 = complementT*complementTPow2;
-
-        const auto threeT_ComplementTPow2 = 3*t*complementTPow2;
-        const auto threeTPow2_ComplementT = 3*tPow2*complementT;
-
-        const auto l1 = complementSPow3 * (
-            complementTPow3*pts[0][0] + threeT_ComplementTPow2*pts[0][1]
-            + threeTPow2_ComplementT*pts[0][2] + tPow3*pts[0][3]);
-
-        const auto l2 = 3*s*complementSPow2 * (
-            complementTPow3*pts[1][0] + threeT_ComplementTPow2*pts[1][1]
-            + threeTPow2_ComplementT*pts[1][2] + tPow3*pts[1][3]);
-
-        const auto l3 = 3*sPow2*complementS * (
-            complementTPow3*pts[2][0] + threeT_ComplementTPow2*pts[2][1]
-            + threeTPow2_ComplementT*pts[2][2] + tPow3*pts[2][3]);
-
-        const auto l4 = sPow3 * (
-            complementTPow3*pts[3][0] + threeT_ComplementTPow2*pts[3][1]
-            + threeTPow2_ComplementT*pts[3][2] + tPow3*pts[3][3]);
-
-        auto calcBezierPointT2 = high_resolution_clock::now();
-        calcBezierPointTime += calcBezierPointT2 - calcBezierPointT1;
-
-        return l1 + l2 + l3 + l4;
-    };
-
     if(renderParameters->bezierEnabled)
     {// UI control for showing the Bezier curve
         omp_set_num_threads(N_THREADS);
@@ -431,11 +417,7 @@ void BezierPatchRenderWidget::paintGL()
                 const RGBAValue color = {alpha*255.0f, 0.5f*255.0f, beta*255.0f, 255.0f};
                 // std::cout << point << '\n';
                 // SetPixel(CalcBezierOrigin(alpha, beta), color);
-                auto pixel = CalcPixel(CalcBezierOrigin(alpha, beta));
-                if (pixel.y == std::numeric_limits<long>::max() ||
-                    pixel.x == std::numeric_limits<long>::max())
-                    continue;
-                frameBuffer[pixel.y][pixel.x] = color;
+                SetPixel(CalcBezierOrigin(alpha, beta, pts), color);
 
             }
         }

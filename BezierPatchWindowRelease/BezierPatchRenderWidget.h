@@ -30,10 +30,9 @@
 #include "RenderParameters.h"
 #include "RGBAImage.h"
 
-struct Pixel {
-	long x;
-	long y;
-};
+static constexpr int N_PTS = 4;
+using Homogeneous4Vector = std::array<Homogeneous4, N_PTS>;
+using Homogeneous4x2 = std::array<Homogeneous4Vector, N_PTS>;
 
 // class for a render widget with arcball linked to an external arcball widget
 class BezierPatchRenderWidget : public QOpenGLWidget
@@ -80,7 +79,12 @@ class BezierPatchRenderWidget : public QOpenGLWidget
 
     private:
 
-	Pixel CalcPixel(const Homogeneous4 &coords) const;
+	Homogeneous4 CalcCubicBezierCurvePoint(float scalar,
+		float coeffA, float coeffB, float coeffC, float coeffD,
+		const Homogeneous4 &pointA, const Homogeneous4 &pointB,
+		const Homogeneous4 &pointC, const Homogeneous4 &pointD);
+	Homogeneous4 CalcBezierOrigin(float s, float t, const Homogeneous4x2 &pts);
+	void SetPixel(const Homogeneous4 &coords, const RGBAValue &color);
 	void DrawLine(const Homogeneous4 &A, const Homogeneous4 &B, const RGBAValue &color);
 
     void forceRepaint();
