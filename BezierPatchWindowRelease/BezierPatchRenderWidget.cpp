@@ -403,14 +403,11 @@ void BezierPatchRenderWidget::paintGL()
     struct Fragment {
         Point3 point;
         RGBAValue color;
-
-        // Fragment(Point3 p, RGBAValue c) : point(std::move(p)), color(std::move(c)) {}
     };
     using FragmentVector = std::vector<Fragment>;
-    std::vector<FragmentVector> fragments(N_THREADS);
-    // std::vector<std::vector<FragmentVector>> fragments(
-    //     N_THREADS,
-    //     std::vector<FragmentVector>(frameBuffer.width*frameBuffer.height));
+    std::vector<std::vector<FragmentVector>> fragments(
+        N_THREADS,
+        std::vector<FragmentVector>(frameBuffer.width*frameBuffer.height));
 
     if(renderParameters->bezierEnabled)
     {// UI control for showing the Bezier curve
@@ -427,28 +424,51 @@ void BezierPatchRenderWidget::paintGL()
                 const RGBAValue color = {alpha*255.0f, 0.5f*255.0f, beta*255.0f, 255.0f};
                 // std::cout << point << '\n';
                 // SetPixel(CalcBezierOrigin(alpha, beta), color);
-                auto origin = CalcBezierOrigin(alpha, beta, pts);
+                const auto origin = CalcBezierOrigin(alpha, beta, pts);
 
                 // convert from clipping space to NDCS - perspective division
                 if (!ShouldHomogeneousClip(origin)) {
                     Point3 point = NDCSToDCS(origin.Point());
                     // Fragment frag{point, color};
+                    const auto x = static_cast<long>(point.x);
+                    const auto y = static_cast<long>(point.y);
 
-                    fragments[omp_get_thread_num()].push_back({point, color});
+                    fragments[omp_get_thread_num()][x*frameBuffer.width + y].push_back({point, color});
+
                     // SetPixel(point.x, point.y, color);
                 }
             }
         }
     }
 
-    // // for (const auto& row : fragments) {
-        for (const auto& row : fragments) {
-            for (const auto& fragment : row) {
-                // std::cout << fragment.point << '\n';
-                SetPixel(fragment.point.x, fragment.point.y, fragment.color);
+    std::vector<FragmentVector> frags(frameBuffer.width*frameBuffer.height);
+
+    for (const auto& threadRow : fragments) {
+        for (const auto& fragmentVector : threadRow) {
+            if (!fragmentVector.empty()) {
+                const auto& firstFrag = fragmentVector.front();
+                const auto x = static_cast<long>(firstFrag.point.x);
+                const auto y = static_cast<long>(firstFrag.point.y);
+                frags[x*frameBuffer.width + y].reserve(fragmentVector.size() - 1);
+                for (const auto& frag : fragmentVector) {
+                    frags[x*frameBuffer.width + y].push_back(frag);
+                }
             }
         }
-    // // }
+    }
+
+    for (auto& fragmentVector : frags) {
+        std::sort(fragmentVector.begin(), fragmentVector.end(),
+            [](const Fragment &a, const Fragment &b){ return a.point.z < b.point.z; });
+    }
+
+    for (const auto& fragmentVector : frags) {
+        if (!fragmentVector.empty()) {
+            const auto& frag = fragmentVector.front();
+            // std::cout << fragment.point << '\n';
+            SetPixel(frag.point.x, frag.point.y, frag.color);
+        }
+    }
 
     auto t2 = high_resolution_clock::now();
 
