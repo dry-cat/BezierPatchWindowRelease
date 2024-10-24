@@ -134,17 +134,21 @@ bool BezierPatchRenderWidget::ShouldHomogeneousClip(const Homogeneous4 &coords) 
         coords.z <= -coords.w || coords.z >= coords.w;
 }
 
+Point3 BezierPatchRenderWidget::NDCSToDCS(Point3 point) {
+    // convert from NDCS to DCS - viewport transformation
+    const auto halfwidth = frameBuffer.width * 0.5f;
+    const auto halfheight = frameBuffer.height * 0.5f;
+    point.x = point.x * halfwidth + halfwidth;
+    point.y = point.y * halfheight + halfheight;
+    point.z = point.z * 0.5f + 0.5f;
+    return point;
+}
+
 void BezierPatchRenderWidget::SetPixel(float px, float py, const RGBAValue& color) {
         // convert from model space to view space to clipping space
 #if !PRE_MULTIPLY_PROJ_MATRIX
         coords = renderParameters->projMatrix * renderParameters->modelviewMatrix * coords;
 #endif // !PRE_MULTIPLY_PROJ_MATRIX
-
-        // convert from NDCS to DCS - viewport transformation
-        const auto halfwidth = frameBuffer.width * 0.5f;
-        const auto halfheight = frameBuffer.height * 0.5f;
-        px = px * halfwidth + halfwidth;
-        py = py * halfheight + halfheight;
 
         const auto x = static_cast<long>(px);
         const auto y = static_cast<long>(py);
@@ -169,7 +173,7 @@ void BezierPatchRenderWidget::DrawLine(const Homogeneous4 &A, const Homogeneous4
 #endif // PRE_MULTIPLY_PROJ_MATRIX
 
         if (!ShouldHomogeneousClip(coords)) {
-            Point3 point = coords.Point();
+            Point3 point = NDCSToDCS(coords.Point());
             SetPixel(point.x, point.y, color);
         }
     }
@@ -342,7 +346,7 @@ void BezierPatchRenderWidget::paintGL()
                                         vertex.y + radius * cos(phi) * sin(theta),
                                         vertex.z + radius * sin(phi), 1.0f);
                     if (!ShouldHomogeneousClip(coords)) {
-                        Point3 point = coords.Point();
+                        Point3 point = NDCSToDCS(coords.Point());
                         SetPixel(point.x, point.y, color);
                     }
                 }
@@ -427,7 +431,7 @@ void BezierPatchRenderWidget::paintGL()
 
                 // convert from clipping space to NDCS - perspective division
                 if (!ShouldHomogeneousClip(origin)) {
-                    Point3 point = origin.Point();
+                    Point3 point = NDCSToDCS(origin.Point());
                     // Fragment frag{point, color};
 
                     fragments[omp_get_thread_num()].push_back({point, color});
