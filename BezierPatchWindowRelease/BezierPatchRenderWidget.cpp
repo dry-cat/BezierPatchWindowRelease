@@ -128,33 +128,23 @@ void BezierPatchRenderWidget::resizeGL(int w, int h)
     }
 } // BezierPatchRenderWidget::resizeGL()
 
+bool BezierPatchRenderWidget::ShouldHomogeneousClip(const Homogeneous4 &coords) {
+    return coords.x <= -coords.w || coords.x >= coords.w ||
+        coords.y <= -coords.w || coords.y >= coords.w ||
+        coords.z <= -coords.w || coords.z >= coords.w;
+}
 
-void BezierPatchRenderWidget::SetPixel(const Homogeneous4 &coords, const RGBAValue& color) {
-        // const auto t1 = high_resolution_clock::now();
-
+void BezierPatchRenderWidget::SetPixel(float px, float py, const RGBAValue& color) {
         // convert from model space to view space to clipping space
 #if !PRE_MULTIPLY_PROJ_MATRIX
         coords = renderParameters->projMatrix * renderParameters->modelviewMatrix * coords;
 #endif // !PRE_MULTIPLY_PROJ_MATRIX
-
-        // perform per pixel clipping
-        if (coords.x <= -coords.w || coords.x >= coords.w ||
-            coords.y <= -coords.w || coords.y >= coords.w ||
-            coords.z <= -coords.w || coords.z >= coords.w) {
-            return;
-        }
-
-        // convert from clipping space to NDCS - perspective division
-        auto px = coords.x / coords.w;
-        auto py = coords.y / coords.w;
-        auto pz = coords.z / coords.w;
 
         // convert from NDCS to DCS - viewport transformation
         const auto halfwidth = frameBuffer.width * 0.5f;
         const auto halfheight = frameBuffer.height * 0.5f;
         px = px * halfwidth + halfwidth;
         py = py * halfheight + halfheight;
-        pz = pz * 0.5f + 0.5f;
 
         const auto x = static_cast<long>(px);
         const auto y = static_cast<long>(py);
@@ -166,21 +156,22 @@ void BezierPatchRenderWidget::SetPixel(const Homogeneous4 &coords, const RGBAVal
         }
 
         frameBuffer[y][x] = color;
-        // const auto setPixelT2 = high_resolution_clock::now();
-        // setPixelTime += setPixelT2 - setPixelT1;
 }
 
 void BezierPatchRenderWidget::DrawLine(const Homogeneous4 &A, const Homogeneous4 &B, const RGBAValue &color) {
     for (float alpha = 0.0f; alpha <= 1.0f; alpha += 0.001f) {
         float beta = 1.0f - alpha;
 
-        Homogeneous4 P = (alpha*A + beta*B);
+        Homogeneous4 coords = (alpha*A + beta*B);
 
 #if PRE_MULTIPLY_PROJ_MATRIX
-        P = renderParameters->projMatrix * renderParameters->modelviewMatrix * P;
+        coords = renderParameters->projMatrix * renderParameters->modelviewMatrix * coords;
 #endif // PRE_MULTIPLY_PROJ_MATRIX
 
-        SetPixel(P, color);
+        if (!ShouldHomogeneousClip(coords)) {
+            Point3 point = coords.Point();
+            SetPixel(point.x, point.y, color);
+        }
     }
 }
 
@@ -192,6 +183,7 @@ Homogeneous4 BezierPatchRenderWidget::CalcCubicBezierCurvePoint(
     return scalar * (coeffA*pointA + coeffB*pointB + coeffC*pointC + coeffD*pointD);
 }
 
+// TODO: rename function
 Homogeneous4 BezierPatchRenderWidget::CalcBezierOrigin(
     float s, float t, const Homogeneous4x2 &pts) {
     const auto sPow2 = s*s;
@@ -342,15 +334,17 @@ void BezierPatchRenderWidget::paintGL()
             double radius = 0.1;
             for (float phi = 0.0; phi < 2.f*PI; phi += PI / 30.0) {
                 for (float theta = 0.0; theta < 2.f*PI; theta += PI / 30.0) {
-                    SetPixel(
-#if PRE_MULTIPLY_PROJ_MATRIX
+                    Homogeneous4 coords =
+    #if PRE_MULTIPLY_PROJ_MATRIX
                         renderParameters->projMatrix * renderParameters->modelviewMatrix *
-#endif // PRE_MULTIPLY_PROJ_MATRIX
-                        Homogeneous4(
-                            vertex.x + radius * cos(phi) * cos(theta),
-                            vertex.y + radius * cos(phi) * sin(theta),
-                            vertex.z + radius * sin(phi),
-                            1.0f), color);
+    #endif // PRE_MULTIPLY_PROJ_MATRIX
+                        Homogeneous4(vertex.x + radius * cos(phi) * cos(theta),
+                                        vertex.y + radius * cos(phi) * sin(theta),
+                                        vertex.z + radius * sin(phi), 1.0f);
+                    if (!ShouldHomogeneousClip(coords)) {
+                        Point3 point = coords.Point();
+                        SetPixel(point.x, point.y, color);
+                    }
                 }
             }
 
@@ -402,6 +396,18 @@ void BezierPatchRenderWidget::paintGL()
     // duration<double, std::milli> setPixelTime{};
     duration<double, std::milli> calcBezierPointTime{};
 
+    struct Fragment {
+        Point3 point;
+        RGBAValue color;
+
+        // Fragment(Point3 p, RGBAValue c) : point(std::move(p)), color(std::move(c)) {}
+    };
+    using FragmentVector = std::vector<Fragment>;
+    std::vector<FragmentVector> fragments(N_THREADS);
+    // std::vector<std::vector<FragmentVector>> fragments(
+    //     N_THREADS,
+    //     std::vector<FragmentVector>(frameBuffer.width*frameBuffer.height));
+
     if(renderParameters->bezierEnabled)
     {// UI control for showing the Bezier curve
         omp_set_num_threads(N_THREADS);
@@ -417,11 +423,29 @@ void BezierPatchRenderWidget::paintGL()
                 const RGBAValue color = {alpha*255.0f, 0.5f*255.0f, beta*255.0f, 255.0f};
                 // std::cout << point << '\n';
                 // SetPixel(CalcBezierOrigin(alpha, beta), color);
-                SetPixel(CalcBezierOrigin(alpha, beta, pts), color);
+                auto origin = CalcBezierOrigin(alpha, beta, pts);
 
+                // convert from clipping space to NDCS - perspective division
+                if (!ShouldHomogeneousClip(origin)) {
+                    Point3 point = origin.Point();
+                    // Fragment frag{point, color};
+
+                    fragments[omp_get_thread_num()].push_back({point, color});
+                    // SetPixel(point.x, point.y, color);
+                }
             }
         }
     }
+
+    // // for (const auto& row : fragments) {
+        for (const auto& row : fragments) {
+            for (const auto& fragment : row) {
+                // std::cout << fragment.point << '\n';
+                SetPixel(fragment.point.x, fragment.point.y, fragment.color);
+            }
+        }
+    // // }
+
     auto t2 = high_resolution_clock::now();
 
     auto perFrameTime2 = high_resolution_clock::now();

@@ -84,7 +84,8 @@ class BezierPatchRenderWidget : public QOpenGLWidget
 		const Homogeneous4 &pointA, const Homogeneous4 &pointB,
 		const Homogeneous4 &pointC, const Homogeneous4 &pointD);
 	Homogeneous4 CalcBezierOrigin(float s, float t, const Homogeneous4x2 &pts);
-	void SetPixel(const Homogeneous4 &coords, const RGBAValue &color);
+	bool ShouldHomogeneousClip(const Homogeneous4 &coords);
+	void SetPixel(float px, float py, const RGBAValue &color);
 	void DrawLine(const Homogeneous4 &A, const Homogeneous4 &B, const RGBAValue &color);
 
     void forceRepaint();
