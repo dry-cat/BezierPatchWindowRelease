@@ -405,9 +405,7 @@ void BezierPatchRenderWidget::paintGL()
         RGBAValue color;
     };
     using FragmentVector = std::vector<Fragment>;
-    std::vector<std::vector<FragmentVector>> fragments(
-        N_THREADS,
-        std::vector<FragmentVector>(frameBuffer.width*frameBuffer.height));
+    std::vector<FragmentVector> fragments(N_THREADS);
 
     if(renderParameters->bezierEnabled)
     {// UI control for showing the Bezier curve
@@ -433,41 +431,30 @@ void BezierPatchRenderWidget::paintGL()
                     const auto x = static_cast<long>(point.x);
                     const auto y = static_cast<long>(point.y);
 
-                    fragments[omp_get_thread_num()][x*frameBuffer.width + y].push_back({point, color});
-
-                    // SetPixel(point.x, point.y, color);
+                    fragments[omp_get_thread_num()].push_back({point, color});
                 }
             }
         }
     }
 
-    std::vector<FragmentVector> frags(frameBuffer.width*frameBuffer.height);
-
-    for (const auto& threadRow : fragments) {
-        for (const auto& fragmentVector : threadRow) {
-            if (!fragmentVector.empty()) {
-                const auto& firstFrag = fragmentVector.front();
-                const auto x = static_cast<long>(firstFrag.point.x);
-                const auto y = static_cast<long>(firstFrag.point.y);
-                frags[x*frameBuffer.width + y].reserve(fragmentVector.size() - 1);
-                for (const auto& frag : fragmentVector) {
-                    frags[x*frameBuffer.width + y].push_back(frag);
-                }
-            }
-        }
+    size_t totalFragments = 0;
+    for (const auto& fragmentVector : fragments) {
+        totalFragments += fragmentVector.size();
     }
 
-    for (auto& fragmentVector : frags) {
-        std::sort(fragmentVector.begin(), fragmentVector.end(),
-            [](const Fragment &a, const Fragment &b){ return a.point.z < b.point.z; });
+    FragmentVector collapsedFrags(totalFragments, Fragment{});
+
+    auto destIterator = collapsedFrags.begin();
+    for (const auto& fragmentVector: fragments) {
+        destIterator = std::copy(fragmentVector.begin(), fragmentVector.end(),
+                                    destIterator);
     }
 
-    for (const auto& fragmentVector : frags) {
-        if (!fragmentVector.empty()) {
-            const auto& frag = fragmentVector.front();
-            // std::cout << fragment.point << '\n';
-            SetPixel(frag.point.x, frag.point.y, frag.color);
-        }
+    std::sort(collapsedFrags.begin(), collapsedFrags.end(),
+        [](const Fragment &a, const Fragment &b){ return a.point.z > b.point.z; });
+
+    for (const auto &frag : collapsedFrags) {
+        SetPixel(frag.point.x, frag.point.y, frag.color);
     }
 
     auto t2 = high_resolution_clock::now();
